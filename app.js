@@ -267,10 +267,87 @@ function search(text) {
     })));
     return;
   }
+  // 2) Carian pintar AI — jika ayat lebih dari satu perkataan (niat semula jadi)
+  if (text.split(' ').length >= 3 && AI_ENDPOINT) {
+    aiSearch(text).then(() => {}).catch(() => {});
+    // masih teruskan carian biasa sebagai sandaran selari
+  }
   const url = `https://nominatim.openstreetmap.org/search?format=json&limit=7&countrycodes=my&q=${encodeURIComponent(text)}&accept-language=ms`;
   fetch(url, { headers:{ 'Accept':'application/json', 'User-Agent':'HalaTuju/1.0' } })
     .then(r => r.json())
     .then(rs => renderResults(rs))
+    .catch(() => toast('Carian gagal. Cuba lagi.'));
+}
+
+// ---- Carian pintar AI (Cloudflare Workers) ----
+// URL worker ditetapkan oleh pengguna selepas deploy. Kosong = AI dimatikan.
+const AI_ENDPOINT = ''; // contoh: 'https://halatuju-ai.<subdomain>.workers.dev/smartsearch'
+
+async function aiSearch(text) {
+  const [lng, lat] = S.userPos || [null, null];
+  const body = { text };
+  if (lat && lng) { body.lat = lat; body.lng = lng; }
+  try {
+    const resp = await fetch(AI_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const d = await resp.json();
+    if (!d.ok || !d.result) return;
+    const r = d.result;
+    // laksana tindakan berdasarkan hasil AI
+    switch (r.action) {
+      case 'navigate_home':
+        goHome();
+        return;
+      case 'park_car':
+        toggleParking();
+        return;
+      case 'find_car':
+        toggleParking();
+        return;
+      case 'search':
+      default:
+        if (r.query) {
+          toast('🤖 "' + r.query + '"', 2000);
+          searchPOIByText(r.query, r.amenity);
+        }
+        return;
+    }
+  } catch(e) {
+    // AI gagal — senyap, carian biasa dah jadi sandaran
+  }
+}
+
+// Carian berasaskan teks (guna Photon + filter amenity kalau ada)
+function searchPOIByText(query, amenity) {
+  const [lng, lat] = S.userPos || [null, null];
+  const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}${lat && lng ? `&lat=${lat}&lon=${lng}` : ''}&limit=8`;
+  fetch(url, { headers:{ 'Accept':'application/json', 'User-Agent':'HalaTuju/1.0' } })
+    .then(r => r.json())
+    .then(d => {
+      let feats = d.features || [];
+      if (amenity) feats = feats.filter(f => (f.properties || {}).osm_value === amenity);
+      const res = $('results');
+      res.innerHTML = '';
+      if (!feats.length) { res.innerHTML = '<div class="res-item">Tiada hasil</div>'; }
+      feats.slice(0, 8).forEach(f => {
+        const p = f.properties || {};
+        const [lon, lat2] = f.geometry.coordinates;
+        const name = p.name || query;
+        const div = document.createElement('div');
+        div.className = 'res-item';
+        div.innerHTML = `<div class="name">${escapeHtml(name)}</div>
+                         <div class="sub">${escapeHtml(p.street || p.city || p.country || '')}</div>`;
+        div.onclick = () => {
+          setDestination(lon, lat2, name);
+          res.classList.remove('show');
+        };
+        res.appendChild(div);
+      });
+      res.classList.add('show');
+    })
     .catch(() => toast('Carian gagal. Cuba lagi.'));
 }
 function renderResults(rs) {
