@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#1e88e5">
+<meta name="description" content="Pandu Arah — aplikasi navigasi ringan untuk Malaysia">
+<title>Pandu Arah</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
+<link href="style.css" rel="stylesheet">
+</head>
+<body>
+<div id="map"></div>
+
+<!-- Bar carian -->
+<div id="searchbar">
+  <div class="search-box">
+    <svg class="ic" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.7.7l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0A4.5 4.5 0 1 1 14 9.5 4.5 4.5 0 0 1 9.5 14z"/></svg>
+    <input id="q" type="text" placeholder="Cari tempat… (contoh: Masjid Negara, Menara KL)" autocomplete="off">
+    <button id="clear" class="x" title="Kosongkan">✕</button>
+  </div>
+  <div id="results"></div>
+</div>
+
+<!-- Butang lokasi semasa -->
+<button id="myloc" class="fab" title="Lokasi saya">
+  <svg viewBox="0 0 24 24"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm8.94 3A8.994 8.994 0 0 0 13 3.06V1h-2v2.06A8.994 8.994 0 0 0 3.06 11H1v2h2.06A8.994 8.994 0 0 0 11 20.94V23h2v-2.06A8.994 8.994 0 0 0 20.94 13H23v-2h-2.06zM12 19a7 7 0 1 1 0-14 7 7 0 0 1 0 14z"/></svg>
+</button>
+
+<!-- Panel ringkasan laluan -->
+<div id="routepanel" class="hidden">
+  <div id="routesummary"></div>
+  <div id="alternates"></div>
+  <div id="routeopts">
+    <label class="opt"><input type="radio" name="mode" value="fastest" checked> 🚀 Paling cepat</label>
+    <label class="opt"><input type="radio" name="mode" value="shortest"> 📏 Paling pendek</label>
+    <label class="opt chk"><input type="checkbox" id="avoidToll"> 🚧 Elak tol</label>
+    <label class="opt chk"><input type="checkbox" id="avoidHighway"> 🛣️ Elak lebuhraya</label>
+  </div>
+  <div class="row">
+    <button id="gobtn" class="primary">🚗 Mula Navigasi</button>
+    <button id="cancelroute" class="ghost">Batal</button>
+  </div>
+</div>
+
+<!-- Banner navigasi aktif -->
+<div id="navbanner" class="hidden">
+  <div class="nav-top">
+    <div id="navmaneuver" class="maneuver-icon"></div>
+    <div class="nav-text">
+      <div id="navinstruction">—</div>
+      <div id="navdistance">—</div>
+    </div>
+    <div class="nav-meta">
+      <div id="naveta">—</div>
+      <div id="navremaining">—</div>
+    </div>
+  </div>
+  <div class="nav-bottom">
+    <button id="stopnav" class="danger">✕ Tamat</button>
+    <button id="recenter" class="ghost">📍 Pusat</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

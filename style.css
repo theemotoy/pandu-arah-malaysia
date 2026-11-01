@@ -1,0 +1,98 @@
+:root {
+  --blue: #1e88e5;
+  --blue-d: #1565c0;
+  --green: #00a651;
+  --danger: #e53935;
+  --shadow: 0 2px 8px rgba(0,0,0,.25);
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin:0; padding:0; height:100%; width:100%; overflow:hidden;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+#map { position:absolute; inset:0; }
+
+/* Bar carian */
+#searchbar { position:absolute; top:12px; left:12px; right:12px; z-index:5; }
+.search-box { display:flex; align-items:center; gap:8px; background:#fff;
+  border-radius:28px; padding:6px 10px; box-shadow:var(--shadow); }
+.search-box .ic { width:22px; height:22px; fill:#666; flex:0 0 auto; }
+.search-box input { flex:1; border:none; outline:none; font-size:16px; background:transparent; }
+.search-box .x { border:none; background:#eee; border-radius:50%; width:26px; height:26px;
+  cursor:pointer; font-size:14px; color:#555; display:none; }
+#results { background:#fff; border-radius:14px; margin-top:6px; overflow:hidden;
+  box-shadow:var(--shadow); max-height:60vh; overflow-y:auto; display:none; }
+#results.show { display:block; }
+.res-item { padding:12px 16px; border-bottom:1px solid #eee; cursor:pointer; }
+.res-item:active { background:#f0f6ff; }
+.res-item .name { font-weight:600; font-size:15px; }
+.res-item .sub { font-size:13px; color:#777; margin-top:2px; }
+.res-item:last-child { border-bottom:none; }
+
+/* Butang terapung */
+.fab { position:absolute; right:16px; bottom:110px; z-index:5; width:52px; height:52px;
+  border-radius:50%; background:#fff; border:none; box-shadow:var(--shadow);
+  cursor:pointer; display:flex; align-items:center; justify-content:center; }
+.fab svg { width:28px; height:28px; fill:var(--blue); }
+.fab:active { background:#eef; }
+
+/* Panel laluan */
+#routepanel { position:absolute; left:12px; right:12px; bottom:16px; z-index:6;
+  background:#fff; border-radius:18px; padding:14px; box-shadow:var(--shadow);
+  max-height:70vh; overflow-y:auto; }
+#routepanel.hidden { display:none; }
+#routesummary { font-size:14px; }
+#routesummary .big { font-size:22px; font-weight:700; color:var(--blue); }
+#routesummary .meta { color:#666; margin-top:2px; }
+
+/* Laluan alternatif */
+#alternates { margin-top:10px; display:none; }
+#alternates.show { display:block; }
+.alt-item { display:flex; align-items:center; gap:10px; padding:10px 12px;
+  border-radius:10px; margin-top:6px; background:#f5f7fa; cursor:pointer;
+  border:2px solid transparent; }
+.alt-item.active { border-color:var(--blue); background:#eaf3fd; }
+.alt-label { font-weight:600; flex:1; }
+.alt-time { font-weight:700; color:var(--blue); }
+.alt-dist { color:#666; font-size:13px; }
+
+/* Pilihan routing */
+#routeopts { margin-top:10px; display:flex; flex-wrap:wrap; gap:6px; }
+.opt { display:inline-flex; align-items:center; gap:5px; padding:7px 11px;
+  background:#f0f0f0; border-radius:20px; font-size:13px; cursor:pointer;
+  user-select:none; }
+.opt input { margin:0; accent-color:var(--blue); }
+.opt:has(input:checked) { background:#eaf3fd; color:var(--blue-d); font-weight:600; }
+.opt.chk:has(input:checked) { background:#eaf3fd; }
+
+.row { display:flex; gap:10px; margin-top:12px; }
+button.primary { flex:1; background:var(--blue); color:#fff; border:none; border-radius:12px;
+  padding:14px; font-size:16px; font-weight:600; cursor:pointer; }
+button.primary:active { background:var(--blue-d); }
+button.ghost { background:#f0f0f0; color:#333; border:none; border-radius:12px;
+  padding:14px; font-size:15px; cursor:pointer; }
+button.danger { background:var(--danger); color:#fff; border:none; border-radius:12px;
+  padding:14px 18px; font-size:15px; font-weight:600; cursor:pointer; }
+
+/* Banner navigasi */
+#navbanner { position:absolute; top:0; left:0; right:0; z-index:7;
+  background:var(--blue); color:#fff; padding:16px; box-shadow:var(--shadow); }
+#navbanner.hidden { display:none; }
+.nav-top { display:flex; align-items:center; gap:14px; }
+.maneuver-icon { width:64px; height:64px; flex:0 0 auto; display:flex; align-items:center; justify-content:center; }
+.maneuver-icon svg { width:56px; height:56px; }
+.nav-text { flex:1; }
+#navinstruction { font-size:22px; font-weight:700; line-height:1.2; }
+#navdistance { font-size:16px; opacity:.9; margin-top:4px; }
+.nav-meta { text-align:right; flex:0 0 auto; }
+#naveta { font-size:26px; font-weight:700; }
+#navremaining { font-size:14px; opacity:.9; }
+.nav-bottom { display:flex; gap:10px; margin-top:12px; }
+.nav-bottom .ghost { background:rgba(255,255,255,.2); color:#fff; flex:1; }
+.nav-bottom .danger { flex:0 0 auto; }
+
+/* Toast */
+#toast { position:absolute; bottom:90px; left:50%; transform:translateX(-50%);
+  background:rgba(0,0,0,.8); color:#fff; padding:10px 18px; border-radius:24px;
+  font-size:14px; z-index:8; opacity:0; transition:opacity .3s; pointer-events:none; }
+#toast.show { opacity:1; }
+
+.hidden { display:none; }
