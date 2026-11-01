@@ -2,7 +2,7 @@
 // Terima ayat semula jadi (Bahasa Melayu) → parse menjadi carian lokasi berstruktur.
 // AI key tersembunyi di sini (server-side), bukan dalam browser.
 
-const MODEL = '@cf/meta/llama-3.1-8b-instruct';
+const MODEL = '@cf/meta/llama-3.2-3b-instruct';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -64,12 +64,32 @@ Jawab dengan JSON sahaja:`;
       max_tokens: 256,
     });
 
-    const content = response?.response || response?.result?.response || '';
+    // Respons Workers AI boleh dalam pelbagai bentuk.
+    // Bentuk paling biasa: OpenAI-compatible { choices: [{ message: { content } }] }
+    let content = '';
+    if (typeof response === 'string') {
+      content = response;
+    } else if (response && response.response) {
+      content = typeof response.response === 'string' ? response.response : JSON.stringify(response.response);
+    } else if (response && response.choices && response.choices[0] && response.choices[0].message) {
+      content = response.choices[0].message.content || '';
+    } else if (response && response.result) {
+      const r = response.result;
+      if (typeof r === 'string') content = r;
+      else if (r && typeof r.response === 'string') content = r.response;
+      else if (Array.isArray(r)) content = r.map(x => x.response || '').join('');
+    }
+
+    // Jika masih kosong, cuba stringify keseluruhan
+    if (!content && response) {
+      content = JSON.stringify(response);
+    }
+
     // Cuba ekstrak JSON dari respons
     const parsed = extractJson(content);
 
     if (!parsed) {
-      return json({ error: 'Gagal faham arahan', raw: content }, 422);
+      return json({ error: 'Gagal faham arahan', raw: content, debugShape: JSON.stringify(response).slice(0, 400) }, 422);
     }
 
     return json({ ok: true, result: parsed });
@@ -78,9 +98,10 @@ Jawab dengan JSON sahaja:`;
   }
 }
 
-// Ekstrak objek JSON pertama dari teks (Llama kadang tambah pembuka/penutup)
+// Ekstrak objek JSON pertama dari teks (model kadang tambah pembuka/penutup)
 function extractJson(text) {
   if (!text) return null;
+  if (typeof text !== 'string') return null;
   try {
     return JSON.parse(text);
   } catch (e) {

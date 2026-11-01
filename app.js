@@ -280,8 +280,8 @@ function search(text) {
 }
 
 // ---- Carian pintar AI (Cloudflare Workers) ----
-// URL worker ditetapkan oleh pengguna selepas deploy. Kosong = AI dimatikan.
-const AI_ENDPOINT = ''; // contoh: 'https://halatuju-ai.<subdomain>.workers.dev/smartsearch'
+// URL worker (AI tersembunyi server-side). Kosong = AI dimatikan.
+const AI_ENDPOINT = 'https://halatuju-ai.the-emotoy.workers.dev/smartsearch';
 
 async function aiSearch(text) {
   const [lng, lat] = S.userPos || [null, null];
@@ -308,12 +308,22 @@ async function aiSearch(text) {
         toggleParking();
         return;
       case 'search':
-      default:
-        if (r.query) {
-          toast('🤖 "' + r.query + '"', 2000);
-          searchPOIByText(r.query, r.amenity);
+      default: {
+        // Jika query kosong tapi category/amenity ada, guna amenity sebagai kata kunci
+        let query = r.query;
+        if (!query && r.amenity) {
+          query = r.amenity.replace(/_/g, ' ');
+        }
+        if (!query && r.category) {
+          const catMap = { fuel:'stesen minyak', food:'restoran', worship:'masjid', health:'klinik', school:'sekolah', atm:'atm', shopping:'kedai', tourism:'tempat menarik' };
+          query = catMap[r.category] || r.category;
+        }
+        if (query) {
+          toast('🤖 "' + query + '"', 2000);
+          searchPOIByText(query, r.amenity);
         }
         return;
+      }
     }
   } catch(e) {
     // AI gagal — senyap, carian biasa dah jadi sandaran
