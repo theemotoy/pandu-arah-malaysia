@@ -12,7 +12,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
-<link href="style.css?v=12" rel="stylesheet">
+<link href="style.css?v=13" rel="stylesheet">
 </head>
 <body>
 <div id="map"></div>
@@ -96,21 +96,29 @@
 
 <!-- Panel ringkasan laluan -->
 <div id="routepanel" class="hidden">
-  <div id="routesummary"></div>
-  <div id="alternates"></div>
-  <div id="routeopts">
-    <label class="opt"><input type="radio" name="mode" value="fastest" checked> 🚀 Paling pantas</label>
-    <label class="opt"><input type="radio" name="mode" value="shortest"> 📏 Paling dekat</label>
-    <label class="opt chk"><input type="checkbox" id="avoidToll"> 🚧 Elak tol</label>
-    <label class="opt chk"><input type="checkbox" id="avoidHighway"> 🛣️ Elak lebuh raya</label>
-    <label class="opt"><input type="radio" name="travel" value="auto" checked> 🚗 Kereta</label>
-    <label class="opt"><input type="radio" name="travel" value="pedestrian"> 🚶 Jalan kaki</label>
-    <label class="opt"><input type="radio" name="travel" value="bicycle"> 🚲 Basikal</label>
+  <div class="sheet-handle" id="sheethandle">
+    <div class="handle-bar"></div>
   </div>
-  <div class="row">
-    <button id="savefav" class="ghost">⭐ Simpan</button>
-    <button id="gobtn" class="primary">🚗 Mula Pandu Arah</button>
-    <button id="cancelroute" class="ghost">Batal</button>
+  <div class="sheet-head">
+    <div id="routesummary"></div>
+    <button id="collapsebtn" class="collapse-btn" title="Sembunyi">⌄</button>
+  </div>
+  <div class="sheet-body" id="sheetbody">
+    <div id="alternates"></div>
+    <div id="routeopts">
+      <label class="opt"><input type="radio" name="mode" value="fastest" checked> 🚀 Paling pantas</label>
+      <label class="opt"><input type="radio" name="mode" value="shortest"> 📏 Paling dekat</label>
+      <label class="opt chk"><input type="checkbox" id="avoidToll"> 🚧 Elak tol</label>
+      <label class="opt chk"><input type="checkbox" id="avoidHighway"> 🛣️ Elak lebuh raya</label>
+      <label class="opt"><input type="radio" name="travel" value="auto" checked> 🚗 Kereta</label>
+      <label class="opt"><input type="radio" name="travel" value="pedestrian"> 🚶 Jalan kaki</label>
+      <label class="opt"><input type="radio" name="travel" value="bicycle"> 🚲 Basikal</label>
+    </div>
+    <div class="row">
+      <button id="savefav" class="ghost">⭐ Simpan</button>
+      <button id="gobtn" class="primary">🚗 Mula Pandu Arah</button>
+      <button id="cancelroute" class="ghost">Batal</button>
+    </div>
   </div>
 </div>
 
@@ -140,7 +148,7 @@
 <div id="copyright">HalaTuju © 2026 Ashraf</div>
 
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-<script src="places-johor.js?v=12"></script>
-<script src="app.js?v=12"></script>
+<script src="places-johor.js?v=13"></script>
+<script src="app.js?v=13"></script>
 </body>
 </html>

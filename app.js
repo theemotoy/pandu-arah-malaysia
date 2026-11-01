@@ -729,6 +729,10 @@ function showRouteSummary() {
     `<div class="big">${fmtTime(r.duration)}</div>
      <div class="meta">${fmtDist(r.distance)} · ke ${escapeHtml(S.dest.name)}</div>`;
   $('routepanel').classList.remove('hidden');
+  // Reset kepada expanded bila laluan baru dikira
+  $('routepanel').classList.remove('collapsed');
+  const cb = $('collapsebtn');
+  if (cb) { cb.classList.remove('expanded'); cb.textContent = '⌄'; }
 }
 
 function showAlternates() {
@@ -926,6 +930,19 @@ function setupButtons() {
   document.querySelectorAll('.poi').forEach(btn => {
     btn.addEventListener('click', () => searchPOI(btn.dataset.amenity));
   });
+
+  // Bottom sheet: lipat / buka (butang + pemegang tarik)
+  const collapseBtn = $('collapsebtn');
+  const sheetHandle = $('sheethandle');
+  const sheetBody = $('sheetbody');
+  function toggleSheet() {
+    const panel = $('routepanel');
+    const collapsed = panel.classList.toggle('collapsed');
+    collapseBtn.classList.toggle('expanded', collapsed);
+    collapseBtn.textContent = collapsed ? '⌃' : '⌄';
+  }
+  if (collapseBtn) collapseBtn.addEventListener('click', toggleSheet);
+  if (sheetHandle) sheetHandle.addEventListener('click', toggleSheet);
 
   // Tukar pilihan routing -> kira semula
   document.querySelectorAll('input[name="mode"], input[name="travel"], #avoidToll, #avoidHighway').forEach(el => {

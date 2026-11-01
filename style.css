@@ -71,14 +71,32 @@ button.small { font-size:12px; padding:6px 10px; border-radius:10px; background:
 .fab.fab5 { bottom:366px; }
 .fab-emoji { font-size:24px; line-height:1; }
 
-/* ===== Panel laluan ===== */
+/* ===== Panel laluan (bottom sheet boleh-lipat) ===== */
 #routepanel { position:absolute; left:12px; right:12px; bottom:16px; z-index:6;
-  background:#fff; border-radius:20px; padding:16px; box-shadow:var(--shadow-lg);
-  max-height:70vh; overflow-y:auto; }
+  background:#fff; border-radius:20px; box-shadow:var(--shadow-lg);
+  overflow:hidden; transition:max-height .25s ease; }
 #routepanel.hidden { display:none; }
-#routesummary { font-size:14px; }
+#routepanel.collapsed { max-height:150px; }
+#routepanel:not(.collapsed) { max-height:70vh; }
+
+/* Pemegang tarik */
+.sheet-handle { display:flex; justify-content:center; padding:8px 0 2px; cursor:pointer; }
+.handle-bar { width:40px; height:4px; border-radius:2px; background:#ccc; }
+
+/* Kepala sheet (ringkasan + butang lipat) */
+.sheet-head { display:flex; align-items:center; gap:8px; padding:0 16px 8px; }
+#routesummary { flex:1; font-size:14px; }
 #routesummary .big { font-size:22px; font-weight:700; color:var(--blue); }
 #routesummary .meta { color:#666; margin-top:2px; }
+.collapse-btn { border:none; background:#f0f0f0; width:34px; height:34px; border-radius:50%;
+  cursor:pointer; font-size:18px; color:#555; flex:0 0 auto; line-height:1; }
+.collapse-btn.expanded { transform:rotate(180deg); }
+
+/* Badan sheet (boleh lipat) */
+.sheet-body { padding:0 16px 14px; overflow-y:auto;
+  transition:opacity .2s ease, max-height .25s ease; }
+#routepanel.collapsed .sheet-body { max-height:0; opacity:0; padding:0 16px; overflow:hidden; }
+#routepanel:not(.collapsed) .sheet-body { max-height:60vh; opacity:1; }
 
 /* Laluan alternatif */
 #alternates { margin-top:10px; display:none; }
