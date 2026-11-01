@@ -2,3 +2,6 @@
 .DS_Store
 Thumbs.db
 *.log
+
+# Cloudflare Wrangler cache (mengandungi token akaun)
+.wrangler/
