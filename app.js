@@ -139,13 +139,7 @@ function initMap() {
     .setLngLat([0,0]).addTo(S.map);
 
   S.map.on('load', () => {
-    S.map.addSource('route', { type:'geojson', data: emptyLine() });
-    S.map.addLayer({ id:'route-casing', type:'line', source:'route',
-      layout:{'line-join':'round','line-cap':'round'},
-      paint:{'line-color':'#ffffff','line-width':10} });
-    S.map.addLayer({ id:'route-line', type:'line', source:'route',
-      layout:{'line-join':'round','line-cap':'round'},
-      paint:{'line-color':'#1e88e5','line-width':6} });
+    addRouteLayers();
   });
 
   S.map.on('click', e => {
@@ -165,6 +159,25 @@ function shapeToGeoJSON(shape) {
     geometry:{ type:'LineString', coordinates: shape }, properties:{} }] };
 }
 
+// Tambah (atau ganti) sumber & lapisan laluan pada style semasa.
+// Dipanggil setiap kali style berubah (init + tukar mod malam) kerana
+// setStyle() buang SEMUA source/layer yang sedia ada.
+function addRouteLayers() {
+  // buang layer lama jika ada (untuk elak konflik id)
+  if (S.map.getLayer('route-line')) S.map.removeLayer('route-line');
+  if (S.map.getLayer('route-casing')) S.map.removeLayer('route-casing');
+  if (S.map.getSource('route')) S.map.removeSource('route');
+
+  const data = (S.route) ? shapeToGeoJSON(S.route.shape) : emptyLine();
+  S.map.addSource('route', { type:'geojson', data: data });
+  S.map.addLayer({ id:'route-casing', type:'line', source:'route',
+    layout:{'line-join':'round','line-cap':'round'},
+    paint:{'line-color':'#ffffff','line-width':10} });
+  S.map.addLayer({ id:'route-line', type:'line', source:'route',
+    layout:{'line-join':'round','line-cap':'round'},
+    paint:{'line-color':'#1e88e5','line-width':6} });
+}
+
 // ---- Mod malam ----
 function toggleDark() {
   S.darkMode = !S.darkMode;
@@ -172,19 +185,20 @@ function toggleDark() {
   const style = S.darkMode
     ? 'https://tiles.openfreemap.org/styles/dark'
     : 'https://tiles.openfreemap.org/styles/liberty';
-  S.map.setStyle(style);
-  S.map.once('style.load', () => {
-    // sumber & lapisan laluan perlu ditambah semula selepas tukar style
-    if (!S.map.getSource('route')) {
-      S.map.addSource('route', { type:'geojson', data: emptyLine() });
-      S.map.addLayer({ id:'route-casing', type:'line', source:'route',
-        layout:{'line-join':'round','line-cap':'round'},
-        paint:{'line-color':'#ffffff','line-width':10} });
-      S.map.addLayer({ id:'route-line', type:'line', source:'route',
-        layout:{'line-join':'round','line-cap':'round'},
-        paint:{'line-color':'#1e88e5','line-width':6} });
+  // setStyle buang semua source/layer. Guna callback diffs untuk pasti
+  // style betul-betul siap sebelum tambah semula lapisan laluan.
+  const onStyleLoaded = () => {
+    // tunggu sehingga style sebenar siap (idle) — lebih andal dari 'style.load'
+    addRouteLayers();
+  };
+  S.map.setStyle(style, { diff: false });
+  S.map.once('styledata', () => {
+    // styledata fire bila style baru mula dimuat; tunggu idle untuk lapisan penuh
+    if (S.map.isStyleLoaded()) {
+      onStyleLoaded();
+    } else {
+      S.map.once('idle', onStyleLoaded);
     }
-    if (S.route) S.map.getSource('route').setData(shapeToGeoJSON(S.route.shape));
   });
 }
 
