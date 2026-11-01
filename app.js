@@ -303,6 +303,42 @@ function searchPOI(key) {
     .catch(() => toast('Carian POI gagal. Cuba lagi.'));
 }
 
+// ---- Carian suara (Web Speech API) ----
+let recognition = null;
+function setupVoiceSearch() {
+  const mic = $('micbtn');
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { mic.style.display = 'none'; return; }
+  recognition = new SR();
+  recognition.lang = 'ms-MY';
+  recognition.interimResults = false;
+  recognition.maxAlternatives = 1;
+
+  recognition.onresult = (event) => {
+    const text = event.results[0][0].transcript;
+    $('q').value = text;
+    $('clear').style.display = 'block';
+    if (text.trim().length >= 2) search(text.trim());
+    mic.classList.remove('recording');
+  };
+  recognition.onerror = () => {
+    mic.classList.remove('recording');
+    toast('Carian suara gagal. Cuba lagi.');
+  };
+  recognition.onend = () => mic.classList.remove('recording');
+
+  mic.addEventListener('click', () => {
+    if (mic.classList.contains('recording')) {
+      recognition.stop();
+      mic.classList.remove('recording');
+      return;
+    }
+    mic.classList.add('recording');
+    toast('🎤 Bercakap sekarang…', 4000);
+    try { recognition.start(); } catch(e) {}
+  });
+}
+
 // ---- Kegemaran (localStorage) ----
 function getFavs() {
   try { return JSON.parse(localStorage.getItem('halaTuju.favs') || '[]'); }
@@ -345,12 +381,80 @@ function renderFavs() {
   });
 }
 
+// ---- Rumah (satu ketik) ----
+function getHome() {
+  try { return JSON.parse(localStorage.getItem('halaTuju.home') || 'null'); }
+  catch(e) { return null; }
+}
+function goHome() {
+  const home = getHome();
+  if (!home) {
+    // belum set -> set lokasi semasa sebagai rumah (tanpa dialog yang menghalang)
+    if (!S.userPos) { toast('Lokasi belum dikesan. Tunggu isyarat GPS…'); return; }
+    localStorage.setItem('halaTuju.home', JSON.stringify({ lat: S.userPos[1], lng: S.userPos[0], name: 'Rumah' }));
+    toast('🏠 Rumah disimpan (tekan sekali lagi untuk pandu balik)');
+    return;
+  }
+  setDestination(home.lng, home.lat, home.name);
+}
+
+// ---- Parkir (ingat lokasi kereta) ----
+function getParking() {
+  try { return JSON.parse(localStorage.getItem('halaTuju.parking') || 'null'); }
+  catch(e) { return null; }
+}
+function toggleParking() {
+  const park = getParking();
+  if (park) {
+    // sudah ada parkir -> pandu ke kereta
+    setDestination(park.lng, park.lat, 'Kereta saya');
+  } else {
+    // belum ada -> simpan lokasi semasa
+    if (!S.userPos) { toast('Lokasi belum dikesan. Tunggu isyarat GPS…'); return; }
+    localStorage.setItem('halaTuju.parking', JSON.stringify({ lat: S.userPos[1], lng: S.userPos[0] }));
+    toast('🅿️ Lokasi kereta disimpan');
+  }
+}
+
+// ---- Sejarah (auto-simpan destinasi terakhir) ----
+function getHistory() {
+  try { return JSON.parse(localStorage.getItem('halaTuju.history') || '[]'); }
+  catch(e) { return []; }
+}
+function addHistory(name, lat, lng) {
+  let hist = getHistory();
+  hist = hist.filter(h => !(Math.abs(h.lat-lat) < 0.0001 && Math.abs(h.lng-lng) < 0.0001));
+  hist.unshift({ name, lat, lng });
+  if (hist.length > 5) hist = hist.slice(0, 5);
+  localStorage.setItem('halaTuju.history', JSON.stringify(hist));
+  renderHistory();
+}
+function renderHistory() {
+  const hist = getHistory();
+  const bar = $('histbar');
+  const list = $('histlist');
+  if (!hist.length) { bar.classList.add('hidden'); return; }
+  bar.classList.remove('hidden');
+  list.innerHTML = '';
+  hist.forEach(h => {
+    const div = document.createElement('div');
+    div.className = 'hist-item';
+    div.textContent = '🕘 ' + h.name;
+    div.onclick = () => setDestination(h.lng, h.lat, h.name);
+    list.appendChild(div);
+  });
+}
+
 // ---- Tetapkan destinasi ----
 function setDestination(lng, lat, name) {
   S.dest = { lng, lat, name };
   if (S.destinationMarker) S.destinationMarker.remove();
   S.destinationMarker = new maplibregl.Marker({ color:'#e53935' })
     .setLngLat([lng, lat]).addTo(S.map);
+  // auto-simpan sejarah (kecuali "Rumah"/"Kereta saya" yang bukan carian sebenar)
+  if (name && name !== 'Rumah' && name !== 'Kereta saya' && name !== 'Titik dipilih') {
+    addHistory(name, lat, lng);
+  }
   if (!S.userPos) { toast('Lokasi belum dikesan. Tunggu isyarat GPS…'); return; }
   fetchRoute(S.userPos, [lng, lat]);
 }
@@ -619,6 +723,8 @@ function setupButtons() {
     else getLocation();
   });
   $('darkbtn').addEventListener('click', toggleDark);
+  $('homebtn').addEventListener('click', goHome);
+  $('parkbtn').addEventListener('click', toggleParking);
   $('gobtn').addEventListener('click', startNavigation);
   $('savefav').addEventListener('click', addFav);
   $('cancelroute').addEventListener('click', () => {
@@ -657,5 +763,7 @@ S.darkMode = localStorage.getItem('halaTuju.dark') === '1';
 
 initMap();
 setupSearch();
+setupVoiceSearch();
 setupButtons();
 renderFavs();
+renderHistory();

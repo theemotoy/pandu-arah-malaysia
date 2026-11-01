@@ -18,6 +18,11 @@ html, body { margin:0; padding:0; height:100%; width:100%; overflow:hidden;
 .search-box input { flex:1; border:none; outline:none; font-size:16px; background:transparent; }
 .search-box .x { border:none; background:#eee; border-radius:50%; width:26px; height:26px;
   cursor:pointer; font-size:14px; color:#555; display:none; }
+.search-box .mic { border:none; background:transparent; width:26px; height:26px; flex:0 0 auto;
+  cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0; }
+.search-box .mic svg { width:22px; height:22px; fill:#666; }
+.search-box .mic.recording svg { fill:var(--danger); animation:pulse 1s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
 #results { background:#fff; border-radius:14px; margin-top:6px; overflow:hidden;
   box-shadow:var(--shadow); max-height:60vh; overflow-y:auto; display:none; }
 #results.show { display:block; }
@@ -46,6 +51,15 @@ html, body { margin:0; padding:0; height:100%; width:100%; overflow:hidden;
 .fav-item .del { color:#999; margin-left:2px; }
 button.small { font-size:12px; padding:6px 10px; }
 
+/* Panel sejarah */
+#histbar { position:absolute; top:118px; left:12px; right:12px; z-index:5;
+  background:#fff; border-radius:14px; padding:8px; box-shadow:var(--shadow); }
+#histbar.hidden { display:none; }
+#histlist { display:flex; gap:6px; overflow-x:auto; }
+#histlist::-webkit-scrollbar { display:none; }
+.hist-item { flex:0 0 auto; background:#f5f5f5; border-radius:16px; padding:7px 12px;
+  font-size:13px; cursor:pointer; color:#333; }
+
 /* Butang terapung */
 .fab { position:absolute; right:16px; bottom:110px; z-index:5; width:52px; height:52px;
   border-radius:50%; background:#fff; border:none; box-shadow:var(--shadow);
@@ -54,6 +68,9 @@ button.small { font-size:12px; padding:6px 10px; }
 .fab:active { background:#eef; }
 .fab.fab2 { bottom:174px; }
 .fab.fab2 svg { fill:#5c6bc0; }
+.fab.fab3 { bottom:238px; }
+.fab.fab4 { bottom:302px; }
+.fab-emoji { font-size:24px; line-height:1; }
 
 /* Panel laluan */
 #routepanel { position:absolute; left:12px; right:12px; bottom:16px; z-index:6;
