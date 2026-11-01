@@ -1,4 +1,4 @@
-const CACHE = 'pandu-arah-v1';
+const CACHE = 'hala-tuju-v1';
 const SHELL = [
   './index.html',
   './style.css',

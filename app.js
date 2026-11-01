@@ -1,4 +1,4 @@
-/* ============ PANDU ARAH — navigasi ringkas untuk Malaysia ============ */
+/* ============ HALATUJU — aplikasi pandu arah ringan untuk Malaysia ============ */
 /* Enjin routing: Valhalla (sokong elak tol/lebuhraya, terpendek, alternatif) */
 'use strict';
 
@@ -24,7 +24,7 @@ const MANEUVER = {
   1:  ['Bergerak', 'straight'],
   2:  ['Bergerak ke kanan', 'right'],
   3:  ['Bergerak ke kiri', 'left'],
-  4:  ['Anda telah sampai', 'arrive'],
+  4:  ['Anda telah tiba', 'arrive'],
   5:  ['Destinasi di kanan', 'arrive'],
   6:  ['Destinasi di kiri', 'arrive'],
   7:  ['Terus ke hadapan', 'straight'],
@@ -166,7 +166,7 @@ function getLocation() {
   if (S.watchId != null) navigator.geolocation.clearWatch(S.watchId);
   S.watchId = navigator.geolocation.watchPosition(
     pos => onPosition(pos),
-    err => { toast('Gagal kesan lokasi: ' + err.message); },
+    err => { toast('Gagal mengesan lokasi: ' + err.message); },
     { enableHighAccuracy: true, maximumAge: 1000, timeout: 20000 }
   );
 }
@@ -226,7 +226,7 @@ function setDestination(lng, lat, name) {
   if (S.destinationMarker) S.destinationMarker.remove();
   S.destinationMarker = new maplibregl.Marker({ color:'#e53935' })
     .setLngLat([lng, lat]).addTo(S.map);
-  if (!S.userPos) { toast('Lokasi belum dikesan. Tunggu GPS…'); return; }
+  if (!S.userPos) { toast('Lokasi belum dikesan. Tunggu isyarat GPS…'); return; }
   fetchRoute(S.userPos, [lng, lat]);
 }
 
@@ -274,7 +274,7 @@ async function fetchRoute(from, to) {
     showRouteSummary();
     showAlternates();
   } catch(e) {
-    toast('Gagal dapat laluan. Semak internet.');
+    toast('Gagal mendapatkan laluan. Semak sambungan internet.');
   }
 }
 
@@ -348,7 +348,7 @@ function stopNavigation() {
   if (S.destinationMarker) { S.destinationMarker.remove(); S.destinationMarker=null; }
   S.dest = null; S.route = null; S.steps = []; S.allRoutes = [];
   speak('');
-  toast('Navigasi ditamatkan');
+  toast('Pandu arah ditamatkan');
 }
 
 function nearestShapeIndex(shape, pos) {
@@ -371,11 +371,11 @@ function updateNavigation() {
     if (S.steps[i].beginIndex > curIdx) { next = S.steps[i]; nextStepNum = i; break; }
   }
   if (!next) {
-    $('navinstruction').textContent = 'Anda telah sampai ke destinasi';
+    $('navinstruction').textContent = 'Anda telah tiba di destinasi';
     $('navdistance').textContent = fmtDist(segDist(shape[curIdx], shape[shape.length-1]));
     $('navmaneuver').innerHTML = maneuverSVG('arrive');
     $('navremaining').textContent = '0 m';
-    $('naveta').textContent = 'Sampai';
+    $('naveta').textContent = 'Tiba';
     return;
   }
 

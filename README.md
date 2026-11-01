@@ -1,18 +1,18 @@
-# 🚗 Pandu Arah Malaysia
+# 🚗 HalaTuju
 
-Aplikasi penunjuk arah **ringan** untuk Malaysia — percuma, Bahasa Melayu, install terus di Android.
+Aplikasi pandu arah **ringan** untuk Malaysia — percuma, Bahasa Melayu, boleh dipasang terus di Android.
 
 ## Apa yang ada
-- 🗺️ Peta OpenStreetMap **terkini** (dikemaskini harian oleh komuniti)
-- 🔍 Cari tempat (sekolah, masjid, kedai, jalan…) — hasil biaskan ke Malaysia
-- 🛣️ Routing turn-by-turn (enjin Valhalla)
-- 🚀 **Paling cepat** / 📏 **Paling pendek** (pilihan mod)
-- 🚧 **Elak tol** & 🛣️ **Elak lebuhraya** (toggle)
+- 🗺️ Peta OpenStreetMap **terkini** (dikemas kini harian oleh komuniti)
+- 🔍 Cari tempat (sekolah, masjid, kedai, jalan…) — hasil dibiaskan ke Malaysia
+- 🛣️ Pandu arah turn-by-turn (enjin Valhalla)
+- 🚀 **Paling pantas** / 📏 **Paling dekat** (pilihan mod)
+- 🚧 **Elak tol** & 🛣️ **Elak lebuh raya** (suis togol)
 - 🔀 **Laluan alternatif** (sehingga 3, pilih & banding jarak/masa)
-- 🧭 Navigasi sebenar: ikut bearing, auto-putar peta, anak panah belok
-- 🔊 Arahan suara Bahasa Melayu (native TTS telefon)
-- 📍 GPS lokasi semasa (panah ikut arah gerak)
-- ⚡ Ringan (~50 KB kod, bukan ratusan MB macam Waze/Google Maps)
+- 🧭 Pandu arah sebenar: ikut bearing, peta berputar automatik, anak panah arah belok
+- 🔊 Arahan suara Bahasa Melayu (TTS terbina dalam telefon)
+- 📍 GPS lokasi semasa (anak panah ikut arah pergerakan)
+- ⚡ Ringan (~50 KB kod, bukan ratusan MB seperti Waze/Google Maps)
 
 ## Cara install di Android
 

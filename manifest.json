@@ -1,7 +1,7 @@
 {
-  "name": "Pandu Arah Malaysia",
-  "short_name": "Pandu Arah",
-  "description": "Aplikasi navigasi ringan untuk Malaysia",
+  "name": "HalaTuju",
+  "short_name": "HalaTuju",
+  "description": "Aplikasi pandu arah ringan untuk Malaysia",
   "start_url": "./index.html",
   "display": "standalone",
   "orientation": "portrait",
