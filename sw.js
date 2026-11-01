@@ -1,8 +1,9 @@
-const CACHE = 'hala-tuju-v2';
+const CACHE = 'hala-tuju-v3';
 const SHELL = [
   './index.html',
   './style.css',
   './app.js',
+  './places-johor.js',
   './manifest.json',
   './icon-192.png',
   './icon-512.png'

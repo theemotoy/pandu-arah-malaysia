@@ -232,6 +232,18 @@ function setupSearch() {
   });
 }
 function search(text) {
+  // 0) semak "Tempat Johor" (data terbina dalam — tempat belum ada dalam OSM)
+  const extra = (typeof EXTRA_PLACES !== 'undefined' ? EXTRA_PLACES : []).filter(p =>
+    p.name.toLowerCase().includes(text.toLowerCase()) ||
+    (p.alt || []).some(a => a.toLowerCase().includes(text.toLowerCase()))
+  );
+  if (extra.length) {
+    renderResults(extra.map(p => ({
+      display_name: p.name + ', ' + p.addr,
+      lon: String(p.lng), lat: String(p.lat),
+    })));
+    return;
+  }
   // 1) semak "Tempat saya" dulu (tempat yang pengguna simpan sendiri)
   const myPlaces = getMyPlaces().filter(p => p.name.toLowerCase().includes(text.toLowerCase()));
   if (myPlaces.length) {
