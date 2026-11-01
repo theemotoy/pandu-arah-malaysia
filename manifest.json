@@ -2,6 +2,8 @@
   "name": "HalaTuju",
   "short_name": "HalaTuju",
   "description": "Aplikasi pandu arah ringan untuk Malaysia",
+  "author": "Ashraf",
+  "copyright": "© 2026 Ashraf",
   "start_url": "./index.html",
   "display": "standalone",
   "orientation": "portrait",

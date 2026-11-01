@@ -1,6 +1,6 @@
 # 🚗 HalaTuju
 
-Aplikasi pandu arah **ringan** untuk Malaysia — percuma, Bahasa Melayu, boleh dipasang terus di Android.
+**© 2026 Ashraf** — aplikasi pandu arah ringan untuk Malaysia.
 
 ## Apa yang ada
 - 🗺️ Peta OpenStreetMap **terkini** (dikemas kini harian oleh komuniti)

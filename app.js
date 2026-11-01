@@ -656,13 +656,14 @@ function getRouteOptions() {
 async function fetchRoute(from, to) {
   const opts = getRouteOptions();
   // pemetaan mod perjalanan -> costing Valhalla
+  // NOTA: Valhalla TIADA "shortest". Paling dekat = "auto_shorter".
   let costing = 'auto';
   if (opts.travel === 'pedestrian') costing = 'pedestrian';
   else if (opts.travel === 'bicycle') costing = 'bicycle';
-  else if (opts.mode === 'shortest') costing = 'shortest';
+  else if (opts.mode === 'shortest') costing = 'auto_shorter';
 
   const costOpts = {};
-  if (costing === 'auto' || costing === 'shortest') {
+  if (costing === 'auto' || costing === 'auto_shorter') {
     if (opts.avoidToll) costOpts.use_tolls = 0.0;
     if (opts.avoidHighway) costOpts.use_highways = 0.0;
   }
@@ -672,7 +673,7 @@ async function fetchRoute(from, to) {
     costing: costing,
     costing_options: { [costing]: costOpts },
     directions_options: { units: 'kilometers' },
-    alternates: (costing === 'auto' || costing === 'shortest') ? 2 : 0,
+    alternates: (costing === 'auto' || costing === 'auto_shorter') ? 2 : 0,
   };
 
   toast('Mengira laluan…', 6000);
