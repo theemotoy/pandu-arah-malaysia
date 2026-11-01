@@ -1,5 +1,5 @@
 /* ============ HALATUJU — aplikasi pandu arah ringan untuk Malaysia ============ */
-/* Enjin routing: Valhalla (sokong elak tol/lebuhraya, terpendek, alternatif) */
+/* Enjin routing: Valhalla (elak tol/lebuh raya, terpendek, alternatif, mod jalan) */
 'use strict';
 
 // ---- Keadaan global ----
@@ -7,6 +7,7 @@ const S = {
   map: null,
   userMarker: null,
   userPos: null,          // [lng, lat]
+  speed: 0,               // km/j
   watchId: null,
   dest: null,             // {lng, lat, name}
   route: null,            // laluan dipilih {shape, steps, distance, duration}
@@ -16,6 +17,8 @@ const S = {
   navigating: false,
   firstFix: false,
   destinationMarker: null,
+  darkMode: false,
+  lastSpeedCheck: 0,
 };
 
 // ---- Pemetaan jenis maneuver Valhalla -> [teks Melayu, arah ikon] ----
@@ -117,9 +120,12 @@ function maneuverSVG(dir) {
 
 // ---- Inisialisasi peta ----
 function initMap() {
+  const style = S.darkMode
+    ? 'https://tiles.openfreemap.org/styles/dark'
+    : 'https://tiles.openfreemap.org/styles/liberty';
   S.map = new maplibregl.Map({
     container: 'map',
-    style: 'https://tiles.openfreemap.org/styles/liberty',
+    style: style,
     center: [101.6942, 3.1390], // Kuala Lumpur
     zoom: 12,
   });
@@ -159,6 +165,29 @@ function shapeToGeoJSON(shape) {
     geometry:{ type:'LineString', coordinates: shape }, properties:{} }] };
 }
 
+// ---- Mod malam ----
+function toggleDark() {
+  S.darkMode = !S.darkMode;
+  localStorage.setItem('halaTuju.dark', S.darkMode ? '1' : '0');
+  const style = S.darkMode
+    ? 'https://tiles.openfreemap.org/styles/dark'
+    : 'https://tiles.openfreemap.org/styles/liberty';
+  S.map.setStyle(style);
+  S.map.once('style.load', () => {
+    // sumber & lapisan laluan perlu ditambah semula selepas tukar style
+    if (!S.map.getSource('route')) {
+      S.map.addSource('route', { type:'geojson', data: emptyLine() });
+      S.map.addLayer({ id:'route-casing', type:'line', source:'route',
+        layout:{'line-join':'round','line-cap':'round'},
+        paint:{'line-color':'#ffffff','line-width':10} });
+      S.map.addLayer({ id:'route-line', type:'line', source:'route',
+        layout:{'line-join':'round','line-cap':'round'},
+        paint:{'line-color':'#1e88e5','line-width':6} });
+    }
+    if (S.route) S.map.getSource('route').setData(shapeToGeoJSON(S.route.shape));
+  });
+}
+
 // ---- Lokasi semasa ----
 function getLocation() {
   if (!navigator.geolocation) { toast('GPS tidak disokong'); return; }
@@ -173,12 +202,19 @@ function getLocation() {
 function onPosition(pos) {
   const c = pos.coords;
   S.userPos = [c.longitude, c.latitude];
+  if (c.speed != null && c.speed >= 0) {
+    S.speed = c.speed * 3.6; // m/s -> km/j
+  }
   S.userMarker.setLngLat(S.userPos);
   if (!S.firstFix) {
     S.firstFix = true;
     S.map.easeTo({ center: S.userPos, zoom: 15 });
   }
-  if (S.navigating) updateNavigation();
+  if (S.navigating) {
+    updateNavigation();
+    updateSpeedDisplay();
+    checkSpeedLimit();
+  }
 }
 
 // ---- Carian tempat (Nominatim) ----
@@ -197,27 +233,116 @@ function setupSearch() {
 }
 function search(text) {
   const url = `https://nominatim.openstreetmap.org/search?format=json&limit=7&countrycodes=my&q=${encodeURIComponent(text)}&accept-language=ms`;
-  fetch(url, { headers:{ 'Accept':'application/json' } })
+  fetch(url, { headers:{ 'Accept':'application/json', 'User-Agent':'HalaTuju/1.0' } })
     .then(r => r.json())
-    .then(rs => {
+    .then(rs => renderResults(rs))
+    .catch(() => toast('Carian gagal. Cuba lagi.'));
+}
+function renderResults(rs) {
+  const res = $('results');
+  res.innerHTML = '';
+  if (!rs.length) { res.innerHTML = '<div class="res-item">Tiada hasil</div>'; }
+  rs.forEach(r => {
+    const div = document.createElement('div');
+    div.className = 'res-item';
+    const sub = r.display_name.split(',').slice(0,3).join(',');
+    div.innerHTML = `<div class="name">${escapeHtml(r.display_name.split(',')[0])}</div>
+                     <div class="sub">${escapeHtml(sub)}</div>`;
+    div.onclick = () => {
+      setDestination(parseFloat(r.lon), parseFloat(r.lat), r.display_name.split(',')[0]);
+      res.classList.remove('show'); $('q').value = ''; $('clear').style.display='none';
+    };
+    res.appendChild(div);
+  });
+  res.classList.add('show');
+}
+
+// ---- POI cepat (Photon + tapisan kategori) ----
+// Pemetaan: kunci butang -> [kata kunci carian Photon, osm_value yang diterima]
+const POI_MAP = {
+  masjid:  { q: 'masjid', value: 'place_of_worship' },
+  fuel:    { q: 'stesen minyak', value: 'fuel' },
+  clinic:  { q: 'klinik', value: 'clinic' },
+  atm:     { q: 'atm', value: 'atm' },
+  school:  { q: 'sekolah', value: 'school' },
+  hospital:{ q: 'hospital', value: 'hospital' },
+};
+function searchPOI(key) {
+  if (!S.userPos) { toast('Lokasi belum dikesan. Tunggu isyarat GPS…'); return; }
+  const [lng, lat] = S.userPos;
+  const def = POI_MAP[key] || { q: key, value: key };
+  const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(def.q)}&lat=${lat}&lon=${lng}&limit=20`;
+  toast('Mencari…', 6000);
+  fetch(url, { headers:{ 'Accept':'application/json', 'User-Agent':'HalaTuju/1.0' } })
+    .then(r => r.json())
+    .then(d => {
+      const features = (d.features || []).filter(f => {
+        const p = f.properties || {};
+        return p.osm_value === def.value || (def.value === 'place_of_worship' && p.osm_value === 'place_of_worship');
+      });
       const res = $('results');
       res.innerHTML = '';
-      if (!rs.length) { res.innerHTML = '<div class="res-item">Tiada hasil</div>'; }
-      rs.forEach(r => {
+      if (!features.length) { res.innerHTML = '<div class="res-item">Tiada hasil berdekatan</div>'; }
+      features.slice(0, 8).forEach(f => {
+        const p = f.properties;
+        const [lon, lat2] = f.geometry.coordinates;
+        const name = p.name || def.q;
+        const dist = fmtDist(haversine(lat, lng, lat2, lon));
         const div = document.createElement('div');
         div.className = 'res-item';
-        const sub = r.display_name.split(',').slice(0,3).join(',');
-        div.innerHTML = `<div class="name">${escapeHtml(r.display_name.split(',')[0])}</div>
-                         <div class="sub">${escapeHtml(sub)}</div>`;
+        div.innerHTML = `<div class="name">${escapeHtml(name)}</div>
+                         <div class="sub">${dist} dari lokasi anda</div>`;
         div.onclick = () => {
-          setDestination(parseFloat(r.lon), parseFloat(r.lat), r.display_name.split(',')[0]);
-          res.classList.remove('show'); $('q').value = ''; $('clear').style.display='none';
+          setDestination(lon, lat2, name);
+          res.classList.remove('show');
         };
         res.appendChild(div);
       });
       res.classList.add('show');
     })
-    .catch(() => toast('Carian gagal. Cuba lagi.'));
+    .catch(() => toast('Carian POI gagal. Cuba lagi.'));
+}
+
+// ---- Kegemaran (localStorage) ----
+function getFavs() {
+  try { return JSON.parse(localStorage.getItem('halaTuju.favs') || '[]'); }
+  catch(e) { return []; }
+}
+function saveFavs(favs) { localStorage.setItem('halaTuju.favs', JSON.stringify(favs)); }
+function addFav() {
+  if (!S.dest) { toast('Tiada destinasi untuk disimpan'); return; }
+  let favs = getFavs();
+  const exists = favs.some(f => f.lat === S.dest.lat && f.lng === S.dest.lng);
+  if (exists) { toast('Sudah ada dalam kegemaran'); return; }
+  favs.push({ name: S.dest.name, lat: S.dest.lat, lng: S.dest.lng });
+  if (favs.length > 20) favs = favs.slice(-20);
+  saveFavs(favs);
+  renderFavs();
+  toast('⭐ Disimpan ke kegemaran');
+}
+function removeFav(idx) {
+  let favs = getFavs();
+  favs.splice(idx, 1);
+  saveFavs(favs);
+  renderFavs();
+}
+function renderFavs() {
+  const favs = getFavs();
+  const bar = $('favbar');
+  const list = $('favlist');
+  if (!favs.length) { bar.classList.add('hidden'); return; }
+  bar.classList.remove('hidden');
+  list.innerHTML = '';
+  favs.forEach((f, i) => {
+    const div = document.createElement('div');
+    div.className = 'fav-item';
+    div.innerHTML = `<span>⭐ ${escapeHtml(f.name)}</span><span class="del" data-i="${i}">✕</span>`;
+    div.addEventListener('click', e => {
+      if (e.target.classList.contains('del')) { removeFav(i); return; }
+      setDestination(f.lng, f.lat, f.name);
+    });
+    list.appendChild(div);
+  });
 }
 
 // ---- Tetapkan destinasi ----
@@ -233,8 +358,10 @@ function setDestination(lng, lat, name) {
 // ---- Baca pilihan routing dari UI ----
 function getRouteOptions() {
   const modeEl = document.querySelector('input[name="mode"]:checked');
+  const travelEl = document.querySelector('input[name="travel"]:checked');
   return {
     mode: modeEl ? modeEl.value : 'fastest',
+    travel: travelEl ? travelEl.value : 'auto',
     avoidToll: $('avoidToll').checked,
     avoidHighway: $('avoidHighway').checked,
   };
@@ -243,17 +370,24 @@ function getRouteOptions() {
 // ---- Fetch route (Valhalla) ----
 async function fetchRoute(from, to) {
   const opts = getRouteOptions();
-  const costing = opts.mode === 'shortest' ? 'shortest' : 'auto';
+  // pemetaan mod perjalanan -> costing Valhalla
+  let costing = 'auto';
+  if (opts.travel === 'pedestrian') costing = 'pedestrian';
+  else if (opts.travel === 'bicycle') costing = 'bicycle';
+  else if (opts.mode === 'shortest') costing = 'shortest';
+
   const costOpts = {};
-  if (opts.avoidToll) costOpts.use_tolls = 0.0;
-  if (opts.avoidHighway) costOpts.use_highways = 0.0;
+  if (costing === 'auto' || costing === 'shortest') {
+    if (opts.avoidToll) costOpts.use_tolls = 0.0;
+    if (opts.avoidHighway) costOpts.use_highways = 0.0;
+  }
 
   const body = {
     locations: [{ lat: from[1], lon: from[0] }, { lat: to[1], lon: to[0] }],
     costing: costing,
     costing_options: { [costing]: costOpts },
     directions_options: { units: 'kilometers' },
-    alternates: 2,
+    alternates: (costing === 'auto' || costing === 'shortest') ? 2 : 0,
   };
 
   toast('Mengira laluan…', 6000);
@@ -296,7 +430,8 @@ function parseTrip(trip) {
 }
 
 function drawRoute(route) {
-  S.map.getSource('route').setData(shapeToGeoJSON(route.shape));
+  const src = S.map.getSource('route');
+  if (src) src.setData(shapeToGeoJSON(route.shape));
   const bounds = route.shape.reduce((b,c)=>b.extend(c),
     new maplibregl.LngLatBounds(route.shape[0], route.shape[0]));
   S.map.fitBounds(bounds, { padding: 80 });
@@ -337,6 +472,9 @@ function startNavigation() {
   S.navigating = true;
   $('routepanel').classList.add('hidden');
   $('navbanner').classList.remove('hidden');
+  $('poibar').classList.add('hidden');
+  $('speedbox').classList.remove('hidden');
+  $('limitbox').classList.remove('hidden');
   S.map.easeTo({ zoom: 16 });
   S._lastStep = -1;
   updateNavigation();
@@ -344,7 +482,11 @@ function startNavigation() {
 function stopNavigation() {
   S.navigating = false;
   $('navbanner').classList.add('hidden');
-  S.map.getSource('route').setData(emptyLine());
+  $('speedbox').classList.add('hidden');
+  $('limitbox').classList.add('hidden');
+  $('poibar').classList.remove('hidden');
+  const src = S.map.getSource('route');
+  if (src) src.setData(emptyLine());
   if (S.destinationMarker) { S.destinationMarker.remove(); S.destinationMarker=null; }
   S.dest = null; S.route = null; S.steps = []; S.allRoutes = [];
   speak('');
@@ -364,6 +506,17 @@ function updateNavigation() {
   if (!S.navigating || !S.userPos || !S.route) return;
   const shape = S.route.shape;
   const curIdx = nearestShapeIndex(shape, S.userPos);
+
+  // auto-reroute: jika pengguna jauh dari laluan (>80m), kira semula
+  const offRouteDist = haversine(S.userPos[1], S.userPos[0], shape[curIdx][1], shape[curIdx][0]);
+  if (offRouteDist > 80 && S.dest && Date.now() - (S._lastReroute||0) > 15000) {
+    S._lastReroute = Date.now();
+    toast('Mengira semula laluan…', 3000);
+    fetchRoute(S.userPos, [S.dest.lng, S.dest.lat]).then(() => {
+      if (S.navigating) updateNavigation();
+    });
+    return;
+  }
 
   // maneuver seterusnya = pertama dengan beginIndex > curIdx
   let next = null, nextStepNum = 0;
@@ -387,25 +540,54 @@ function updateNavigation() {
   $('navdistance').textContent = fmtDist(distToManeuver) + (next.name ? ' · ' + next.name : '');
   $('navmaneuver').innerHTML = maneuverSVG(next.dir);
 
-  // Suara bila langkah berubah
   if (S._lastStep !== S.stepIdx) {
     S._lastStep = S.stepIdx;
     speak(instr);
   }
 
-  // Baki jarak + ETA
   const remaining = S.route.distance - distanceAlong(shape, 0, curIdx);
   $('navremaining').textContent = fmtDist(Math.max(0, remaining));
   $('naveta').textContent = etaText(remaining);
 
-  // Ikut bearing ke maneuver seterusnya
   followBearing(bearingTo(S.userPos, next.location));
 }
 
 function etaText(remainingM) {
-  const remainSec = remainingM / (40000/3600); // anggaran 40 km/j
+  const speed = S.speed > 5 ? S.speed : 40; // km/j
+  const remainSec = remainingM / (speed*1000/3600);
   const arr = new Date(Date.now() + remainSec*1000);
   return 'Tiba ' + arr.toLocaleTimeString('ms-MY', {hour:'2-digit', minute:'2-digit'});
+}
+
+// ---- Paparan kelajuan ----
+function updateSpeedDisplay() {
+  const box = $('speedbox');
+  $('speedval').textContent = Math.round(S.speed);
+  box.classList.toggle('over', S.speed > 120);
+}
+
+// ---- Had laju (dari OSM via Overpass, graceful fallback) ----
+function checkSpeedLimit() {
+  if (Date.now() - S.lastSpeedCheck < 30000) return; // semak tiap 30s
+  S.lastSpeedCheck = Date.now();
+  if (!S.userPos) return;
+  const [lng, lat] = S.userPos;
+  const q = `[out:json][timeout:10];way(around:80,${lat},${lng})["maxspeed"];out tags 3;`;
+  fetch('https://overpass-api.de/api/interpreter', {
+    method:'POST', headers:{ 'User-Agent':'HalaTuju/1.0' },
+    body: 'data=' + encodeURIComponent(q),
+  })
+    .then(r => r.json())
+    .then(d => {
+      const els = (d.elements || []).filter(e => e.tags && e.tags.maxspeed);
+      if (!els.length) { $('limitbox').classList.add('hidden'); return; }
+      let ms = els[0].tags.maxspeed;
+      ms = String(ms).replace(/\D/g, '');
+      if (!ms) { $('limitbox').classList.add('hidden'); return; }
+      $('limitval').textContent = ms + ' km/j';
+      $('limitbox').classList.remove('hidden');
+    })
+    .catch(() => { /* senyap - had laju optional */ });
 }
 
 let followMode = true;
@@ -436,10 +618,13 @@ function setupButtons() {
     if (S.userPos) S.map.easeTo({ center:S.userPos, zoom:15 });
     else getLocation();
   });
+  $('darkbtn').addEventListener('click', toggleDark);
   $('gobtn').addEventListener('click', startNavigation);
+  $('savefav').addEventListener('click', addFav);
   $('cancelroute').addEventListener('click', () => {
     $('routepanel').classList.add('hidden');
-    S.map.getSource('route').setData(emptyLine());
+    const src = S.map.getSource('route');
+    if (src) src.setData(emptyLine());
     if (S.destinationMarker){S.destinationMarker.remove();S.destinationMarker=null;}
     S.dest=null; S.route=null; S.allRoutes=[];
   });
@@ -449,8 +634,13 @@ function setupButtons() {
     if (S.userPos) S.map.easeTo({ center:S.userPos, zoom:17, pitch:45 });
   });
 
+  // Butang POI
+  document.querySelectorAll('.poi').forEach(btn => {
+    btn.addEventListener('click', () => searchPOI(btn.dataset.amenity));
+  });
+
   // Tukar pilihan routing -> kira semula
-  document.querySelectorAll('input[name="mode"], #avoidToll, #avoidHighway').forEach(el => {
+  document.querySelectorAll('input[name="mode"], input[name="travel"], #avoidToll, #avoidHighway').forEach(el => {
     el.addEventListener('change', () => {
       if (S.dest && S.userPos) fetchRoute(S.userPos, [S.dest.lng, S.dest.lat]);
     });
@@ -462,6 +652,10 @@ if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js'));
 }
 
+// pulih mod malam
+S.darkMode = localStorage.getItem('halaTuju.dark') === '1';
+
 initMap();
 setupSearch();
 setupButtons();
+renderFavs();

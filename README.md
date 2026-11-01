@@ -14,6 +14,15 @@ Aplikasi pandu arah **ringan** untuk Malaysia — percuma, Bahasa Melayu, boleh 
 - 📍 GPS lokasi semasa (anak panah ikut arah pergerakan)
 - ⚡ Ringan (~50 KB kod, bukan ratusan MB seperti Waze/Google Maps)
 
+### Ciri baharu (Tahap 1 & 2)
+- ⭐ **Simpan tempat kegemaran** (Rumah, Sekolah, pejabat) — tersimpan dalam telefon
+- 🕌 **Butang POI pantas**: Masjid, Stesen minyak, Klinik, ATM, Sekolah, Hospital
+- 🚶 **Mod berjalan kaki** & 🚲 **mod basikal** (bukan kereta sahaja)
+- 🌙 **Mod malam** (peta gelap untuk pandu waktu malam)
+- 🔁 **Kira semula laluan automatik** bila tersasar dari laluan
+- 🚗 **Paparan kelajuan** masa nyata
+- 🛑 **Had laju** (dari data OpenStreetMap)
+
 ## Cara install di Android
 
 ### Cara paling mudah — terus jadi app (PWA)

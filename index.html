@@ -27,9 +27,28 @@
   <div id="results"></div>
 </div>
 
-<!-- Butang lokasi semasa -->
+<!-- Butang POI cepat -->
+<div id="poibar">
+  <button class="poi" data-amenity="masjid">🕌 Masjid</button>
+  <button class="poi" data-amenity="fuel">⛽ Minyak</button>
+  <button class="poi" data-amenity="clinic">🏥 Klinik</button>
+  <button class="poi" data-amenity="atm">🏧 ATM</button>
+  <button class="poi" data-amenity="school">🏫 Sekolah</button>
+  <button class="poi" data-amenity="hospital">🚑 Hospital</button>
+</div>
+
+<!-- Panel kegemaran -->
+<div id="favbar" class="hidden">
+  <div id="favlist"></div>
+  <button id="favmanage" class="ghost small">⭐ Urus</button>
+</div>
+
+<!-- Butang terapung -->
 <button id="myloc" class="fab" title="Lokasi saya">
   <svg viewBox="0 0 24 24"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm8.94 3A8.994 8.994 0 0 0 13 3.06V1h-2v2.06A8.994 8.994 0 0 0 3.06 11H1v2h2.06A8.994 8.994 0 0 0 11 20.94V23h2v-2.06A8.994 8.994 0 0 0 20.94 13H23v-2h-2.06zM12 19a7 7 0 1 1 0-14 7 7 0 0 1 0 14z"/></svg>
+</button>
+<button id="darkbtn" class="fab fab2" title="Mod malam">
+  <svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.389 5.389 0 0 1-4.4 2.26 5.403 5.403 0 0 1-3.14-9.8c-.44-.06-.9-.1-1.36-.1z"/></svg>
 </button>
 
 <!-- Panel ringkasan laluan -->
@@ -37,12 +56,16 @@
   <div id="routesummary"></div>
   <div id="alternates"></div>
   <div id="routeopts">
-    <label class="opt"><input type="radio" name="mode" value="fastest" checked> 🚀 Paling cepat</label>
-    <label class="opt"><input type="radio" name="mode" value="shortest"> 📏 Paling pendek</label>
+    <label class="opt"><input type="radio" name="mode" value="fastest" checked> 🚀 Paling pantas</label>
+    <label class="opt"><input type="radio" name="mode" value="shortest"> 📏 Paling dekat</label>
     <label class="opt chk"><input type="checkbox" id="avoidToll"> 🚧 Elak tol</label>
     <label class="opt chk"><input type="checkbox" id="avoidHighway"> 🛣️ Elak lebuh raya</label>
+    <label class="opt"><input type="radio" name="travel" value="auto" checked> 🚗 Kereta</label>
+    <label class="opt"><input type="radio" name="travel" value="pedestrian"> 🚶 Jalan kaki</label>
+    <label class="opt"><input type="radio" name="travel" value="bicycle"> 🚲 Basikal</label>
   </div>
   <div class="row">
+    <button id="savefav" class="ghost">⭐ Simpan</button>
     <button id="gobtn" class="primary">🚗 Mula Pandu Arah</button>
     <button id="cancelroute" class="ghost">Batal</button>
   </div>
@@ -61,6 +84,8 @@
       <div id="navremaining">—</div>
     </div>
   </div>
+  <div id="speedbox" class="hidden"><span id="speedval">0</span><span class="unit">km/j</span></div>
+  <div id="limitbox" class="hidden">🛑 Had laju <span id="limitval">—</span></div>
   <div class="nav-bottom">
     <button id="stopnav" class="danger">✕ Tamat</button>
     <button id="recenter" class="ghost">📍 Pusat</button>

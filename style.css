@@ -27,12 +27,33 @@ html, body { margin:0; padding:0; height:100%; width:100%; overflow:hidden;
 .res-item .sub { font-size:13px; color:#777; margin-top:2px; }
 .res-item:last-child { border-bottom:none; }
 
+/* Butang POI cepat */
+#poibar { position:absolute; top:70px; left:12px; right:12px; z-index:5;
+  display:flex; gap:6px; overflow-x:auto; padding-bottom:2px; }
+#poibar::-webkit-scrollbar { display:none; }
+.poi { flex:0 0 auto; background:#fff; border:none; border-radius:20px; padding:8px 14px;
+  font-size:13px; font-weight:600; color:#333; box-shadow:var(--shadow); cursor:pointer; }
+.poi:active { background:#eaf3fd; }
+
+/* Panel kegemaran */
+#favbar { position:absolute; top:118px; left:12px; right:12px; z-index:5;
+  background:#fff; border-radius:14px; padding:8px; box-shadow:var(--shadow); }
+#favbar.hidden { display:none; }
+#favlist { display:flex; gap:6px; overflow-x:auto; }
+#favlist::-webkit-scrollbar { display:none; }
+.fav-item { flex:0 0 auto; background:#f0f6ff; border-radius:16px; padding:7px 12px;
+  font-size:13px; cursor:pointer; color:var(--blue-d); display:flex; align-items:center; gap:5px; }
+.fav-item .del { color:#999; margin-left:2px; }
+button.small { font-size:12px; padding:6px 10px; }
+
 /* Butang terapung */
 .fab { position:absolute; right:16px; bottom:110px; z-index:5; width:52px; height:52px;
   border-radius:50%; background:#fff; border:none; box-shadow:var(--shadow);
   cursor:pointer; display:flex; align-items:center; justify-content:center; }
 .fab svg { width:28px; height:28px; fill:var(--blue); }
 .fab:active { background:#eef; }
+.fab.fab2 { bottom:174px; }
+.fab.fab2 svg { fill:#5c6bc0; }
 
 /* Panel laluan */
 #routepanel { position:absolute; left:12px; right:12px; bottom:16px; z-index:6;
@@ -85,6 +106,23 @@ button.danger { background:var(--danger); color:#fff; border:none; border-radius
 .nav-meta { text-align:right; flex:0 0 auto; }
 #naveta { font-size:26px; font-weight:700; }
 #navremaining { font-size:14px; opacity:.9; }
+
+/* Kelajuan + had laju */
+#speedbox { position:absolute; top:88px; right:16px; z-index:8; background:#fff;
+  color:var(--blue-d); border-radius:16px; padding:6px 14px; box-shadow:var(--shadow);
+  text-align:center; }
+#speedbox.hidden { display:none; }
+#speedval { font-size:26px; font-weight:800; }
+#speedbox .unit { font-size:11px; color:#777; margin-left:2px; }
+#speedbox.over { background:var(--danger); }
+#speedbox.over #speedval, #speedbox.over .unit { color:#fff; }
+
+#limitbox { position:absolute; top:150px; right:16px; z-index:8; background:#fff;
+  border-radius:20px; padding:6px 12px; font-size:14px; box-shadow:var(--shadow);
+  border:2px solid var(--danger); color:#333; }
+#limitbox.hidden { display:none; }
+#limitbox span { font-weight:800; color:var(--danger); }
+
 .nav-bottom { display:flex; gap:10px; margin-top:12px; }
 .nav-bottom .ghost { background:rgba(255,255,255,.2); color:#fff; flex:1; }
 .nav-bottom .danger { flex:0 0 auto; }
@@ -92,7 +130,7 @@ button.danger { background:var(--danger); color:#fff; border:none; border-radius
 /* Toast */
 #toast { position:absolute; bottom:90px; left:50%; transform:translateX(-50%);
   background:rgba(0,0,0,.8); color:#fff; padding:10px 18px; border-radius:24px;
-  font-size:14px; z-index:8; opacity:0; transition:opacity .3s; pointer-events:none; }
+  font-size:14px; z-index:9; opacity:0; transition:opacity .3s; pointer-events:none; }
 #toast.show { opacity:1; }
 
 .hidden { display:none; }
