@@ -835,7 +835,22 @@ function setupButtons() {
 
 // ---- Daftar service worker + mula ----
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js'));
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').then(reg => {
+      // Auto-update: bila versi baru tersedia, aktifkan & muat semula
+      reg.addEventListener('updatefound', () => {
+        const newWorker = reg.installing;
+        newWorker.addEventListener('statechange', () => {
+          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            newWorker.postMessage('SKIP_WAITING');
+            setTimeout(() => location.reload(), 300);
+          }
+        });
+      });
+    });
+    // semak update setiap kali app dibuka
+    navigator.serviceWorker.ready.then(reg => reg.update());
+  });
 }
 
 // pulih mod malam

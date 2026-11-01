@@ -1,4 +1,4 @@
-const CACHE = 'hala-tuju-v3';
+const CACHE = 'hala-tuju-v4';
 const SHELL = [
   './index.html',
   './style.css',
@@ -17,6 +17,16 @@ self.addEventListener('activate', e => {
   e.waitUntil(caches.keys().then(keys =>
     Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
   ).then(() => self.clients.claim()));
+});
+
+// Paksa muat semula bila versi baru dipasang (buang cache lama & refresh tab)
+self.addEventListener('message', e => {
+  if (e.data === 'SKIP_WAITING') self.skipWaiting();
+});
+
+self.addEventListener('controllerchange', () => {
+  // bila service worker baru ambil alih, muat semula supaya pengguna nampak versi terkini
+  if (self.registration) self.registration.update();
 });
 
 // Network-first: sentiasa cuba dapatkan versi terkini, guna cache hanya bila offline.
