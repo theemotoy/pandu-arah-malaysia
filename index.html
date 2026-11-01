@@ -17,7 +17,7 @@
 <body>
 <div id="map"></div>
 
-<!-- Bar carian -->
+<!-- Bar carian + semua elemen atas (satu kontena, tiada overlap) -->
 <div id="searchbar">
   <div class="search-box">
     <button id="micbtn" class="mic" title="Carian suara">
@@ -27,28 +27,29 @@
     <input id="q" type="text" placeholder="Cari tempat… (contoh: Masjid Negara, Menara KL)" autocomplete="off">
     <button id="clear" class="x" title="Kosongkan">✕</button>
   </div>
+
+  <!-- Butang POI cepat -->
+  <div id="poibar">
+    <button class="poi" data-amenity="masjid">🕌 Masjid</button>
+    <button class="poi" data-amenity="fuel">⛽ Minyak</button>
+    <button class="poi" data-amenity="clinic">🏥 Klinik</button>
+    <button class="poi" data-amenity="atm">🏧 ATM</button>
+    <button class="poi" data-amenity="school">🏫 Sekolah</button>
+    <button class="poi" data-amenity="hospital">🚑 Hospital</button>
+  </div>
+
+  <!-- Panel kegemaran -->
+  <div id="favbar" class="hidden">
+    <div id="favlist"></div>
+    <button id="favmanage" class="ghost small">⭐ Urus</button>
+  </div>
+
+  <!-- Panel sejarah -->
+  <div id="histbar" class="hidden">
+    <div id="histlist"></div>
+  </div>
+
   <div id="results"></div>
-</div>
-
-<!-- Butang POI cepat -->
-<div id="poibar">
-  <button class="poi" data-amenity="masjid">🕌 Masjid</button>
-  <button class="poi" data-amenity="fuel">⛽ Minyak</button>
-  <button class="poi" data-amenity="clinic">🏥 Klinik</button>
-  <button class="poi" data-amenity="atm">🏧 ATM</button>
-  <button class="poi" data-amenity="school">🏫 Sekolah</button>
-  <button class="poi" data-amenity="hospital">🚑 Hospital</button>
-</div>
-
-<!-- Panel kegemaran -->
-<div id="favbar" class="hidden">
-  <div id="favlist"></div>
-  <button id="favmanage" class="ghost small">⭐ Urus</button>
-</div>
-
-<!-- Panel sejarah -->
-<div id="histbar" class="hidden">
-  <div id="histlist"></div>
 </div>
 
 <!-- Butang terapung -->

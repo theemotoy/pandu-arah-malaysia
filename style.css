@@ -3,69 +3,67 @@
   --blue-d: #1565c0;
   --green: #00a651;
   --danger: #e53935;
-  --shadow: 0 2px 8px rgba(0,0,0,.25);
+  --shadow: 0 2px 12px rgba(0,0,0,.18);
+  --shadow-lg: 0 6px 24px rgba(0,0,0,.22);
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body { margin:0; padding:0; height:100%; width:100%; overflow:hidden;
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
 #map { position:absolute; inset:0; }
 
-/* Bar carian */
-#searchbar { position:absolute; top:12px; left:12px; right:12px; z-index:5; }
+/* ===== Bar carian + elemen atas (satu kontena aliran menegak) ===== */
+#searchbar { position:absolute; top:12px; left:12px; right:12px; z-index:5;
+  display:flex; flex-direction:column; gap:8px; pointer-events:none; }
+#searchbar > * { pointer-events:auto; }
+
 .search-box { display:flex; align-items:center; gap:8px; background:#fff;
-  border-radius:28px; padding:6px 10px; box-shadow:var(--shadow); }
+  border-radius:26px; padding:6px 8px 6px 10px; box-shadow:var(--shadow); }
 .search-box .ic { width:22px; height:22px; fill:#666; flex:0 0 auto; }
-.search-box input { flex:1; border:none; outline:none; font-size:16px; background:transparent; }
+.search-box input { flex:1; border:none; outline:none; font-size:16px; background:transparent; min-width:0; }
 .search-box .x { border:none; background:#eee; border-radius:50%; width:26px; height:26px;
-  cursor:pointer; font-size:14px; color:#555; display:none; }
+  cursor:pointer; font-size:14px; color:#555; display:none; flex:0 0 auto; }
 .search-box .mic { border:none; background:transparent; width:26px; height:26px; flex:0 0 auto;
   cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0; }
 .search-box .mic svg { width:22px; height:22px; fill:#666; }
 .search-box .mic.recording svg { fill:var(--danger); animation:pulse 1s infinite; }
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
-#results { background:#fff; border-radius:14px; margin-top:6px; overflow:hidden;
-  box-shadow:var(--shadow); max-height:60vh; overflow-y:auto; display:none; }
-#results.show { display:block; }
-.res-item { padding:12px 16px; border-bottom:1px solid #eee; cursor:pointer; }
-.res-item:active { background:#f0f6ff; }
-.res-item .name { font-weight:600; font-size:15px; }
-.res-item .sub { font-size:13px; color:#777; margin-top:2px; }
-.res-item:last-child { border-bottom:none; }
 
-/* Butang POI cepat */
-#poibar { position:absolute; top:70px; left:12px; right:12px; z-index:5;
-  display:flex; gap:6px; overflow-x:auto; padding-bottom:2px; }
+/* Butang POI cepat (baris boleh skrol) */
+#poibar { display:flex; gap:6px; overflow-x:auto; padding:2px 0; }
 #poibar::-webkit-scrollbar { display:none; }
 .poi { flex:0 0 auto; background:#fff; border:none; border-radius:20px; padding:8px 14px;
   font-size:13px; font-weight:600; color:#333; box-shadow:var(--shadow); cursor:pointer; }
 .poi:active { background:#eaf3fd; }
 
-/* Panel kegemaran */
-#favbar { position:absolute; top:118px; left:12px; right:12px; z-index:5;
-  background:#fff; border-radius:14px; padding:8px; box-shadow:var(--shadow); }
-#favbar.hidden { display:none; }
-#favlist { display:flex; gap:6px; overflow-x:auto; }
-#favlist::-webkit-scrollbar { display:none; }
+/* Panel kegemaran & sejarah (baris boleh skrol) */
+#favbar, #histbar { background:#fff; border-radius:14px; padding:8px; box-shadow:var(--shadow); }
+#favbar.hidden, #histbar.hidden { display:none; }
+#favlist, #histlist { display:flex; gap:6px; overflow-x:auto; }
+#favlist::-webkit-scrollbar, #histlist::-webkit-scrollbar { display:none; }
 .fav-item { flex:0 0 auto; background:#f0f6ff; border-radius:16px; padding:7px 12px;
   font-size:13px; cursor:pointer; color:var(--blue-d); display:flex; align-items:center; gap:5px; }
 .fav-item .del { color:#999; margin-left:2px; }
-button.small { font-size:12px; padding:6px 10px; }
-
-/* Panel sejarah */
-#histbar { position:absolute; top:118px; left:12px; right:12px; z-index:5;
-  background:#fff; border-radius:14px; padding:8px; box-shadow:var(--shadow); }
-#histbar.hidden { display:none; }
-#histlist { display:flex; gap:6px; overflow-x:auto; }
-#histlist::-webkit-scrollbar { display:none; }
 .hist-item { flex:0 0 auto; background:#f5f5f5; border-radius:16px; padding:7px 12px;
   font-size:13px; cursor:pointer; color:#333; }
+button.small { font-size:12px; padding:6px 10px; border-radius:10px; background:#f0f0f0; border:none; cursor:pointer; }
 
-/* Butang terapung */
-.fab { position:absolute; right:16px; bottom:110px; z-index:5; width:52px; height:52px;
+/* Hasil carian (dalam kontena yang sama - tak akan overlap) */
+#results { background:#fff; border-radius:16px; overflow:hidden;
+  box-shadow:var(--shadow-lg); max-height:48vh; overflow-y:auto; display:none; }
+#results.show { display:block; }
+.res-item { padding:13px 16px; border-bottom:1px solid #f0f0f0; cursor:pointer; }
+.res-item:active { background:#f0f6ff; }
+.res-item .name { font-weight:600; font-size:15px; }
+.res-item .sub { font-size:13px; color:#777; margin-top:2px; }
+.res-item:last-child { border-bottom:none; }
+
+/* ===== Butang terapung (kanan bawah, disusun menegak) ===== */
+.fab { position:absolute; right:16px; z-index:5; width:52px; height:52px;
   border-radius:50%; background:#fff; border:none; box-shadow:var(--shadow);
   cursor:pointer; display:flex; align-items:center; justify-content:center; }
 .fab svg { width:28px; height:28px; fill:var(--blue); }
 .fab:active { background:#eef; }
+.fab { bottom:110px; }
 .fab.fab2 { bottom:174px; }
 .fab.fab2 svg { fill:#5c6bc0; }
 .fab.fab3 { bottom:238px; }
@@ -73,9 +71,9 @@ button.small { font-size:12px; padding:6px 10px; }
 .fab.fab5 { bottom:366px; }
 .fab-emoji { font-size:24px; line-height:1; }
 
-/* Panel laluan */
+/* ===== Panel laluan ===== */
 #routepanel { position:absolute; left:12px; right:12px; bottom:16px; z-index:6;
-  background:#fff; border-radius:18px; padding:14px; box-shadow:var(--shadow);
+  background:#fff; border-radius:20px; padding:16px; box-shadow:var(--shadow-lg);
   max-height:70vh; overflow-y:auto; }
 #routepanel.hidden { display:none; }
 #routesummary { font-size:14px; }
@@ -86,7 +84,7 @@ button.small { font-size:12px; padding:6px 10px; }
 #alternates { margin-top:10px; display:none; }
 #alternates.show { display:block; }
 .alt-item { display:flex; align-items:center; gap:10px; padding:10px 12px;
-  border-radius:10px; margin-top:6px; background:#f5f7fa; cursor:pointer;
+  border-radius:12px; margin-top:6px; background:#f5f7fa; cursor:pointer;
   border:2px solid transparent; }
 .alt-item.active { border-color:var(--blue); background:#eaf3fd; }
 .alt-label { font-weight:600; flex:1; }
@@ -111,9 +109,9 @@ button.ghost { background:#f0f0f0; color:#333; border:none; border-radius:12px;
 button.danger { background:var(--danger); color:#fff; border:none; border-radius:12px;
   padding:14px 18px; font-size:15px; font-weight:600; cursor:pointer; }
 
-/* Banner navigasi */
+/* ===== Banner navigasi ===== */
 #navbanner { position:absolute; top:0; left:0; right:0; z-index:7;
-  background:var(--blue); color:#fff; padding:16px; box-shadow:var(--shadow); }
+  background:var(--blue); color:#fff; padding:16px; box-shadow:var(--shadow-lg); }
 #navbanner.hidden { display:none; }
 .nav-top { display:flex; align-items:center; gap:14px; }
 .maneuver-icon { width:64px; height:64px; flex:0 0 auto; display:flex; align-items:center; justify-content:center; }
@@ -145,18 +143,18 @@ button.danger { background:var(--danger); color:#fff; border:none; border-radius
 .nav-bottom .ghost { background:rgba(255,255,255,.2); color:#fff; flex:1; }
 .nav-bottom .danger { flex:0 0 auto; }
 
-/* Toast */
+/* ===== Toast ===== */
 #toast { position:absolute; bottom:90px; left:50%; transform:translateX(-50%);
   background:rgba(0,0,0,.8); color:#fff; padding:10px 18px; border-radius:24px;
   font-size:14px; z-index:9; opacity:0; transition:opacity .3s; pointer-events:none; }
 #toast.show { opacity:1; }
 
-/* Modal tambah tempat */
+/* ===== Modal tambah tempat ===== */
 #addplacemodal { position:absolute; inset:0; z-index:20; background:rgba(0,0,0,.5);
   display:flex; align-items:center; justify-content:center; }
 #addplacemodal.hidden { display:none; }
 .modal-box { background:#fff; border-radius:18px; padding:20px; width:90%; max-width:380px;
-  box-shadow:var(--shadow); }
+  box-shadow:var(--shadow-lg); }
 .modal-title { font-size:18px; font-weight:700; margin-bottom:4px; }
 .modal-sub { font-size:12px; color:#777; margin-bottom:12px; }
 .modal-box input, .modal-box select { width:100%; padding:12px; border:1px solid #ddd;
