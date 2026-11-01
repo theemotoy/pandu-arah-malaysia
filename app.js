@@ -176,6 +176,15 @@ function addRouteLayers() {
   S.map.addLayer({ id:'route-line', type:'line', source:'route',
     layout:{'line-join':'round','line-cap':'round'},
     paint:{'line-color':'#1e88e5','line-width':6} });
+
+  // Sumber trafik (bulatan warna) — tambah semula selepas style berubah
+  if (!S.map.getSource('traffic')) {
+    S.map.addSource('traffic', { type:'geojson', data: { type:'FeatureCollection', features: [] } });
+    S.map.addLayer({
+      id: 'traffic-layer', type: 'circle', source: 'traffic',
+      paint: { 'circle-radius': 18, 'circle-opacity': 0.35, 'circle-color': ['get', 'color'] },
+    });
+  }
 }
 
 // ---- Mod malam ----
@@ -228,7 +237,50 @@ function onPosition(pos) {
     updateNavigation();
     updateSpeedDisplay();
     checkSpeedLimit();
+    reportTraffic();
   }
+}
+
+// ---- Trafik crowd-source (hantar lokasi anonim + papar) ----
+const TRAFFIC_ENDPOINT = 'https://halatuju-traffic.the-emotoy.workers.dev';
+let lastTrafficReport = 0;
+
+// Hantar lokasi + kelajuan setiap 15s semasa navigasi (ANONIM, tiada identiti)
+function reportTraffic() {
+  if (!S.userPos) return;
+  const now = Date.now();
+  if (now - lastTrafficReport < 15000) return;
+  lastTrafficReport = now;
+  const [lng, lat] = S.userPos;
+  fetch(TRAFFIC_ENDPOINT + '/report', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ lat, lng, speed: Math.round(S.speed) }),
+  }).catch(() => {}); // senyap — trafik optional
+}
+
+// Tarik trafik sekitar & papar warna pada peta (bulatan separa lutsinar)
+let trafficSourceAdded = false;
+function fetchTraffic() {
+  if (!S.userPos) return;
+  const [lng, lat] = S.userPos;
+  const d = 0.05; // ~5km
+  const url = `${TRAFFIC_ENDPOINT}/traffic?minLat=${lat-d}&maxLat=${lat+d}&minLng=${lng-d}&maxLng=${lng+d}`;
+  fetch(url).then(r => r.json()).then(data => {
+    if (!data.ok || !data.segments) return;
+    drawTraffic(data.segments);
+  }).catch(() => {});
+}
+
+function drawTraffic(segments) {
+  // sumber 'traffic' sudah ditambah dalam addRouteLayers()
+  if (!S.map.getSource('traffic')) return;
+  const features = segments.map(s => ({
+    type: 'Feature',
+    geometry: { type: 'Point', coordinates: [s.lng, s.lat] },
+    properties: { color: s.level === 'red' ? '#e53935' : s.level === 'yellow' ? '#f9a825' : '#43a047' },
+  }));
+  S.map.getSource('traffic').setData({ type: 'FeatureCollection', features });
 }
 
 // ---- Carian tempat (Nominatim) ----
@@ -982,3 +1034,8 @@ setupAddPlace();
 setupButtons();
 renderFavs();
 renderHistory();
+
+// Tarik trafik sekitar setiap 30 saat (sekali lokasi dah sedia)
+setInterval(() => {
+  if (S.userPos) fetchTraffic();
+}, 30000);

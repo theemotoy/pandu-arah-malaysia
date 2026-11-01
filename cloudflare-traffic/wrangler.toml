@@ -1,0 +1,8 @@
+name = "halatuju-traffic"
+main = "src/index.js"
+compatibility_date = "2025-01-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "halatuju-traffic-db"
+database_id = "4139f48c-3625-4eef-9809-67240d2a3bc9"
