@@ -232,6 +232,15 @@ function setupSearch() {
   });
 }
 function search(text) {
+  // 1) semak "Tempat saya" dulu (tempat yang pengguna simpan sendiri)
+  const myPlaces = getMyPlaces().filter(p => p.name.toLowerCase().includes(text.toLowerCase()));
+  if (myPlaces.length) {
+    renderResults(myPlaces.map(p => ({
+      display_name: p.name + ', Tempat saya',
+      lon: String(p.lng), lat: String(p.lat),
+    })));
+    return;
+  }
   const url = `https://nominatim.openstreetmap.org/search?format=json&limit=7&countrycodes=my&q=${encodeURIComponent(text)}&accept-language=ms`;
   fetch(url, { headers:{ 'Accept':'application/json', 'User-Agent':'HalaTuju/1.0' } })
     .then(r => r.json())
@@ -442,6 +451,65 @@ function renderHistory() {
     div.textContent = '🕘 ' + h.name;
     div.onclick = () => setDestination(h.lng, h.lat, h.name);
     list.appendChild(div);
+  });
+}
+
+// ---- Tambah tempat (Tempat saya + sumbang ke OSM) ----
+let addPlacePos = null; // [lng, lat] lokasi dipilih untuk tambah
+
+function getMyPlaces() {
+  try { return JSON.parse(localStorage.getItem('halaTuju.myplaces') || '[]'); }
+  catch(e) { return []; }
+}
+function saveMyPlaces(places) { localStorage.setItem('halaTuju.myplaces', JSON.stringify(places)); }
+
+function openAddPlace(lng, lat) {
+  addPlacePos = [lng, lat];
+  $('addplace-coords').textContent = 'Lokasi: ' + lat.toFixed(5) + ', ' + lng.toFixed(5);
+  $('addplace-name').value = '';
+  $('addplacemodal').classList.remove('hidden');
+  setTimeout(() => $('addplace-name').focus(), 100);
+}
+function closeAddPlace() {
+  $('addplacemodal').classList.add('hidden');
+  addPlacePos = null;
+}
+
+function saveMyPlace() {
+  const name = $('addplace-name').value.trim();
+  if (!name) { toast('Sila masukkan nama tempat'); return; }
+  if (!addPlacePos) { toast('Tiada lokasi dipilih'); return; }
+  const type = $('addplace-type').value;
+  let places = getMyPlaces();
+  places.push({ name, lat: addPlacePos[1], lng: addPlacePos[0], type });
+  saveMyPlaces(places);
+  toast('✅ "' + name + '" disimpan — boleh dicari sekarang');
+  closeAddPlace();
+}
+
+function contributeToOSM() {
+  if (!addPlacePos) { toast('Tiada lokasi dipilih'); return; }
+  const name = $('addplace-name').value.trim();
+  const type = $('addplace-type').value;
+  // Buka editor OSM rasmi di koordinat tepat (iD editor) — pengguna login & simpan di sana
+  const url = `https://www.openstreetmap.org/edit?editor=id#map=19/${addPlacePos[1]}/${addPlacePos[0]}`;
+  window.open(url, '_blank');
+  toast('Editor OSM dibuka — lengkapkan & simpan di sana', 6000);
+  closeAddPlace();
+}
+
+function setupAddPlace() {
+  $('addplacebtn').addEventListener('click', () => {
+    if (!S.userPos) { toast('Lokasi belum dikesan. Tunggu isyarat GPS…'); return; }
+    // guna lokasi semasa sebagai titik awal
+    openAddPlace(S.userPos[0], S.userPos[1]);
+  });
+  $('addplace-save').addEventListener('click', saveMyPlace);
+  $('addplace-osm').addEventListener('click', contributeToOSM);
+  $('addplace-cancel').addEventListener('click', closeAddPlace);
+  // tutup bila ketik luar modal
+  $('addplacemodal').addEventListener('click', e => {
+    if (e.target === $('addplacemodal')) closeAddPlace();
   });
 }
 
@@ -764,6 +832,7 @@ S.darkMode = localStorage.getItem('halaTuju.dark') === '1';
 initMap();
 setupSearch();
 setupVoiceSearch();
+setupAddPlace();
 setupButtons();
 renderFavs();
 renderHistory();

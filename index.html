@@ -64,6 +64,34 @@
 <button id="parkbtn" class="fab fab4" title="Parkir">
   <span class="fab-emoji">🅿️</span>
 </button>
+<button id="addplacebtn" class="fab fab5" title="Tambah tempat">
+  <span class="fab-emoji">➕</span>
+</button>
+
+<!-- Modal tambah tempat -->
+<div id="addplacemodal" class="hidden">
+  <div class="modal-box">
+    <div class="modal-title">➕ Tambah Tempat</div>
+    <div id="addplace-coords" class="modal-sub"></div>
+    <input id="addplace-name" type="text" placeholder="Nama tempat (contoh: Kedai Roti Pak Ali)" autocomplete="off">
+    <select id="addplace-type">
+      <option value="shop">🏪 Kedai / Perniagaan</option>
+      <option value="amenity=place_of_worship">🕌 Tempat ibadah</option>
+      <option value="amenity=school">🏫 Sekolah</option>
+      <option value="amenity=restaurant">🍽️ Restoran</option>
+      <option value="amenity=cafe">☕ Kafe</option>
+      <option value="amenity=fuel">⛽ Stesen minyak</option>
+      <option value="amenity=hospital">🏥 Hospital / Klinik</option>
+      <option value="tourism=attraction">📸 Tempat menarik</option>
+      <option value="other">📍 Lain-lain</option>
+    </select>
+    <div class="modal-actions">
+      <button id="addplace-save" class="primary">Simpan</button>
+      <button id="addplace-osm" class="ghost">Sumbang ke OSM</button>
+      <button id="addplace-cancel" class="ghost">Batal</button>
+    </div>
+  </div>
+</div>
 
 <!-- Panel ringkasan laluan -->
 <div id="routepanel" class="hidden">
