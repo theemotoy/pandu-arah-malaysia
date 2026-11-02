@@ -147,6 +147,27 @@ function initMap() {
     setDestination(e.lngLat.lng, e.lngLat.lat, 'Titik dipilih');
   });
 
+  // Waze-style follow: bila pengguna seret peta, berhenti ikut;
+  // selepas 5 saat tanpa interaksi semasa navigasi, kembali ikut anak panah.
+  let autoRecenterTimer = null;
+  const pauseFollow = () => {
+    if (!S.navigating) return;
+    followMode = false;
+    lastMapInteraction = Date.now();
+    if (autoRecenterTimer) clearTimeout(autoRecenterTimer);
+    autoRecenterTimer = setTimeout(() => {
+      // hanya kembali ikut jika tiada interaksi susulan
+      if (Date.now() - lastMapInteraction >= 4500 && S.navigating) {
+        followMode = true;
+        // kekalkan bearing semasa, center ke lokasi
+        S.map.easeTo({ center: S.userPos, bearing: S.map.getBearing(), zoom: 17, pitch: 45, padding: { top: 220, bottom: 130, left: 60, right: 60 }, duration: 600 });
+      }
+    }, 5000);
+  };
+  S.map.on('mousedown', pauseFollow);
+  S.map.on('touchstart', pauseFollow);
+  S.map.on('dragstart', pauseFollow);
+
   getLocation();
 }
 
@@ -897,7 +918,8 @@ async function fetchRoute(from, to) {
     alternates: (costing === 'auto' || costing === 'auto_shorter') ? 2 : 0,
   };
 
-  toast('Mengira laluan…', 6000);
+  // Semasa navigasi, jangan tunjuk toast (reroute senyap)
+  if (!S.navigating) toast('Mengira laluan…', 6000);
   try {
     const resp = await fetch('https://valhalla1.openstreetmap.de/route', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -912,8 +934,14 @@ async function fetchRoute(from, to) {
     S.steps = S.route.steps;
     S.stepIdx = 0;
     drawRoute(S.route);
-    showRouteSummary();
-    showAlternates();
+    // Semasa navigasi (reroute), JANGAN buka panel laluan / zoom keluar —
+    // gerak kerja Waze/Maps: reroute senyap di latar, paparan kekal pada anak panah.
+    if (S.navigating) {
+      updateNavigation();
+    } else {
+      showRouteSummary();
+      showAlternates();
+    }
   } catch(e) {
     toast('Gagal mendapatkan laluan. Semak sambungan internet.');
   }
@@ -939,6 +967,8 @@ function parseTrip(trip) {
 function drawRoute(route) {
   const src = S.map.getSource('route');
   if (src) src.setData(shapeToGeoJSON(route.shape));
+  // Semasa navigasi, jangan fitBounds (akan zoom keluar dari anak panah)
+  if (S.navigating) return;
   const bounds = route.shape.reduce((b,c)=>b.extend(c),
     new maplibregl.LngLatBounds(route.shape[0], route.shape[0]));
   S.map.fitBounds(bounds, { padding: 80 });
@@ -983,16 +1013,21 @@ function startNavigation() {
   S.navigating = true;
   $('routepanel').classList.add('hidden');
   $('navbanner').classList.remove('hidden');
-  $('poibar').classList.add('hidden');
+  $('searchbar').classList.add('hidden');
+  $('fab-stack').classList.add('hidden');
+  $('quickmenu').classList.add('hidden');
   $('speedbox').classList.remove('hidden');
   $('limitbox').classList.remove('hidden');
-  S.map.easeTo({ zoom: 16 });
+  followMode = true;
+  S.map.easeTo({ zoom: 17, pitch: 45, padding: { top: 220, bottom: 130, left: 60, right: 60 } });
   S._lastStep = -1;
   updateNavigation();
 }
 function stopNavigation() {
   S.navigating = false;
   $('navbanner').classList.add('hidden');
+  $('searchbar').classList.remove('hidden');
+  $('fab-stack').classList.remove('hidden');
   $('speedbox').classList.add('hidden');
   $('limitbox').classList.add('hidden');
   $('poibar').classList.remove('hidden');
@@ -1018,11 +1053,11 @@ function updateNavigation() {
   const shape = S.route.shape;
   const curIdx = nearestShapeIndex(shape, S.userPos);
 
-  // auto-reroute: jika pengguna jauh dari laluan (>80m), kira semula
+  // auto-reroute: hanya bila betul-betul terpesong jauh (>150m, bukan lompatan GPS kecil).
+  // Gerak kerja Waze/Maps: reroute senyap, tak buka menu, tak mengganggu pemandu.
   const offRouteDist = haversine(S.userPos[1], S.userPos[0], shape[curIdx][1], shape[curIdx][0]);
-  if (offRouteDist > 80 && S.dest && Date.now() - (S._lastReroute||0) > 15000) {
+  if (offRouteDist > 150 && S.dest && Date.now() - (S._lastReroute||0) > 20000) {
     S._lastReroute = Date.now();
-    toast('Mengira semula laluan…', 3000);
     fetchRoute(S.userPos, [S.dest.lng, S.dest.lat]).then(() => {
       if (S.navigating) updateNavigation();
     });
@@ -1102,9 +1137,18 @@ function checkSpeedLimit() {
 }
 
 let followMode = true;
+let lastMapInteraction = 0;
+// Waze-style: anak panah di bahagian bawah skrin (bukan tengah), via padding atas besar
 function followBearing(bearing) {
   if (!followMode) return;
-  S.map.easeTo({ bearing, center: S.userPos, zoom: 17, pitch: 45, duration: 800 });
+  S.map.easeTo({
+    bearing,
+    center: S.userPos,
+    zoom: 17,
+    pitch: 45,
+    padding: { top: 220, bottom: 130, left: 60, right: 60 },
+    duration: 800,
+  });
 }
 
 // ---- TTS (sebutan Melayu) ----
