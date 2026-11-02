@@ -1135,8 +1135,36 @@ setupAddPlace();
 setupButtons();
 renderFavs();
 renderHistory();
+setupStats();
 
 // Tarik trafik sekitar setiap 30 saat (sekali lokasi dah sedia)
 setInterval(() => {
   if (S.userPos) fetchTraffic();
 }, 30000);
+
+// ---- Statistik (panel 📊) ----
+function setupStats() {
+  $('statsbtn').addEventListener('click', () => {
+    // isi statistik lokal
+    $('stat-favs').textContent = getFavs().length;
+    $('stat-history').textContent = getHistory().length;
+    $('statsmodal').classList.remove('hidden');
+    // tarik statistik cloud
+    fetch(PLACES_ENDPOINT + '/stats')
+      .then(r => r.json())
+      .then(d => {
+        if (d.ok) {
+          $('stat-total').textContent = d.total;
+          $('stat-today').textContent = d.addedToday;
+        }
+      })
+      .catch(() => {
+        $('stat-total').textContent = '—';
+        $('stat-today').textContent = '—';
+      });
+  });
+  $('stats-close').addEventListener('click', () => $('statsmodal').classList.add('hidden'));
+  $('statsmodal').addEventListener('click', e => {
+    if (e.target === $('statsmodal')) $('statsmodal').classList.add('hidden');
+  });
+}

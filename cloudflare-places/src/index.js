@@ -35,7 +35,12 @@ export default {
       return handleIndex(request, env);
     }
 
-    return json({ ok: true, name: 'HalaTuju Places', endpoints: ['/add', '/search', '/nearby', '/index'] });
+    // Statistik (bilangan tempat dalam pangkalan)
+    if (url.pathname === '/stats' && request.method === 'GET') {
+      return handleStats(request, env);
+    }
+
+    return json({ ok: true, name: 'HalaTuju Places', endpoints: ['/add', '/search', '/nearby', '/index', '/stats'] });
   },
 };
 
@@ -148,4 +153,21 @@ function json(obj, status = 200) {
     status,
     headers: { 'Content-Type': 'application/json', ...CORS },
   });
+}
+
+// Statistik pangkalan tempat
+async function handleStats(request, env) {
+  try {
+    const total = await env.DB.prepare('SELECT COUNT(*) AS c FROM places').first();
+    const today = await env.DB.prepare(
+      'SELECT COUNT(*) AS c FROM places WHERE ts >= ?'
+    ).bind(Math.floor(Date.now()/1000) - 86400).first();
+    return json({
+      ok: true,
+      total: total ? total.c : 0,
+      addedToday: today ? today.c : 0,
+    });
+  } catch (e) {
+    return json({ error: 'Ralat stats: ' + (e.message || e) }, 500);
+  }
 }

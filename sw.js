@@ -1,4 +1,4 @@
-const CACHE = 'hala-tuju-v10';
+const CACHE = 'hala-tuju-v11';
 const SHELL = [
   './index.html',
   './style.css',

@@ -12,7 +12,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
-<link href="style.css?v=17" rel="stylesheet">
+<link href="style.css?v=18" rel="stylesheet">
 </head>
 <body>
 <div id="map"></div>
@@ -68,6 +68,37 @@
 <button id="addplacebtn" class="fab fab5" title="Tambah tempat">
   <span class="fab-emoji">➕</span>
 </button>
+<button id="statsbtn" class="fab fab6" title="Statistik">
+  <span class="fab-emoji">📊</span>
+</button>
+
+<!-- Modal statistik -->
+<div id="statsmodal" class="hidden">
+  <div class="modal-box">
+    <div class="modal-title">📊 Statistik HalaTuju</div>
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-num" id="stat-total">—</div>
+        <div class="stat-label">Tempat dalam pangkalan</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num" id="stat-today">—</div>
+        <div class="stat-label">Ditambah hari ini</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num" id="stat-favs">—</div>
+        <div class="stat-label">Kegemaran anda</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num" id="stat-history">—</div>
+        <div class="stat-label">Sejarah anda</div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button id="stats-close" class="primary">Tutup</button>
+    </div>
+  </div>
+</div>
 
 <!-- Modal tambah tempat -->
 <div id="addplacemodal" class="hidden">
@@ -148,7 +179,7 @@
 <div id="copyright">HalaTuju © 2026 Ashraf</div>
 
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-<script src="places-johor.js?v=17"></script>
-<script src="app.js?v=17"></script>
+<script src="places-johor.js?v=18"></script>
+<script src="app.js?v=18"></script>
 </body>
 </html>
