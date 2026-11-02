@@ -715,6 +715,10 @@ function openAddPlace(lng, lat) {
   addPlacePos = [lng, lat];
   $('addplace-coords').textContent = 'Lokasi: ' + lat.toFixed(5) + ', ' + lng.toFixed(5);
   $('addplace-name').value = '';
+  // reset dropdown & input custom
+  $('addplace-type').value = 'shop';
+  $('addplace-custom-type').value = '';
+  $('addplace-custom-type').classList.add('hidden');
   $('addplacemodal').classList.remove('hidden');
   setTimeout(() => $('addplace-name').focus(), 100);
 }
@@ -727,7 +731,7 @@ function saveMyPlace() {
   const name = $('addplace-name').value.trim();
   if (!name) { toast('Sila masukkan nama tempat'); return; }
   if (!addPlacePos) { toast('Tiada lokasi dipilih'); return; }
-  const type = $('addplace-type').value;
+  const type = resolveType();
   const lat = addPlacePos[1], lng = addPlacePos[0];
 
   // 1) simpan lokal (offline)
@@ -753,6 +757,16 @@ function saveMyPlace() {
   closeAddPlace();
 }
 
+// Dapatkan jenis tempat; kalau "custom", guna teks yang ditaip pengguna
+function resolveType() {
+  const sel = $('addplace-type').value;
+  if (sel === 'custom') {
+    const custom = $('addplace-custom-type').value.trim();
+    return custom ? ('custom:' + custom) : 'other';
+  }
+  return sel;
+}
+
 function contributeToOSM() {
   if (!addPlacePos) { toast('Tiada lokasi dipilih'); return; }
   const name = $('addplace-name').value.trim();
@@ -773,6 +787,12 @@ function setupAddPlace() {
   $('addplace-save').addEventListener('click', saveMyPlace);
   $('addplace-osm').addEventListener('click', contributeToOSM);
   $('addplace-cancel').addEventListener('click', closeAddPlace);
+  // Tunjuk/sembunyi input custom bila pilih "Custom"
+  $('addplace-type').addEventListener('change', () => {
+    const isCustom = $('addplace-type').value === 'custom';
+    $('addplace-custom-type').classList.toggle('hidden', !isCustom);
+    if (isCustom) $('addplace-custom-type').focus();
+  });
   // tutup bila ketik luar modal
   $('addplacemodal').addEventListener('click', e => {
     if (e.target === $('addplacemodal')) closeAddPlace();

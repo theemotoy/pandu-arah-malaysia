@@ -12,7 +12,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
-<link href="style.css?v=18" rel="stylesheet">
+<link href="style.css?v=19" rel="stylesheet">
 </head>
 <body>
 <div id="map"></div>
@@ -116,7 +116,9 @@
       <option value="amenity=hospital">🏥 Hospital / Klinik</option>
       <option value="tourism=attraction">📸 Tempat menarik</option>
       <option value="other">📍 Lain-lain</option>
+      <option value="custom">✏️ Custom (taip sendiri)</option>
     </select>
+    <input id="addplace-custom-type" type="text" class="hidden" placeholder="Jenis tempat (contoh: Bengkel, Kedai kek, Surau...)" autocomplete="off">
     <div class="modal-actions">
       <button id="addplace-save" class="primary">Simpan</button>
       <button id="addplace-osm" class="ghost">Sumbang ke OSM</button>
@@ -179,7 +181,7 @@
 <div id="copyright">HalaTuju © 2026 Ashraf</div>
 
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-<script src="places-johor.js?v=18"></script>
-<script src="app.js?v=18"></script>
+<script src="places-johor.js?v=19"></script>
+<script src="app.js?v=19"></script>
 </body>
 </html>
