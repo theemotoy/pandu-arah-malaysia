@@ -255,7 +255,11 @@ function reportTraffic() {
   fetch(TRAFFIC_ENDPOINT + '/report', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ lat, lng, speed: Math.round(S.speed) }),
+    body: JSON.stringify({
+      lat, lng,
+      speed: Math.round(S.speed),
+      heading: Math.round(S.map.getBearing() || 0),
+    }),
   }).catch(() => {}); // senyap — trafik optional
 }
 
@@ -484,6 +488,27 @@ function renderResults(rs) {
     res.appendChild(div);
   });
   res.classList.add('show');
+  // Auto-index: senyap simpan hasil carian yang jumpa ke pangkalan berkongsi
+  // supaya kawasan (cth. Senai/Kulai/Skudai) makin lengkap untuk pengguna lain.
+  autoIndexResults(rs);
+}
+
+// Hantar hasil carian berjaya ke pangkalan berkongsi (dedup di server)
+function autoIndexResults(rs) {
+  const places = rs
+    .filter(r => r.lat && r.lon)
+    .map(r => ({
+      name: r.display_name.split(',')[0].trim(),
+      lat: parseFloat(r.lat),
+      lng: parseFloat(r.lon),
+    }))
+    .slice(0, 7); // maks 7
+  if (!places.length) return;
+  fetch(PLACES_ENDPOINT + '/index', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ places }),
+  }).catch(() => {}); // senyap
 }
 
 // ---- POI cepat (Photon + tapisan kategori) ----
