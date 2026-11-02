@@ -129,7 +129,7 @@ function initMap() {
     center: [101.6942, 3.1390], // Kuala Lumpur
     zoom: 12,
   });
-  S.map.addControl(new maplibregl.NavigationControl({ showCompass: true }), 'bottom-right');
+  S.map.addControl(new maplibregl.NavigationControl({ showCompass: true, visualizePitch: true }), 'bottom-left');
 
   const el = document.createElement('div');
   el.className = 'user-arrow';
@@ -864,10 +864,10 @@ function setDestination(lng, lat, name) {
 // ---- Baca pilihan routing dari UI ----
 function getRouteOptions() {
   const modeEl = document.querySelector('input[name="mode"]:checked');
-  const travelEl = document.querySelector('input[name="travel"]:checked');
+  const travelEl = document.querySelector('.travel.active');
   return {
     mode: modeEl ? modeEl.value : 'fastest',
-    travel: travelEl ? travelEl.value : 'auto',
+    travel: travelEl ? travelEl.dataset.travel : 'auto',
     avoidToll: $('avoidToll').checked,
     avoidHighway: $('avoidHighway').checked,
   };
@@ -953,7 +953,7 @@ function showRouteSummary() {
   // Reset kepada expanded bila laluan baru dikira
   $('routepanel').classList.remove('collapsed');
   const cb = $('collapsebtn');
-  if (cb) { cb.classList.remove('expanded'); cb.textContent = '⌄'; }
+  if (cb) { cb.classList.remove('expanded'); }
 }
 
 function showAlternates() {
@@ -1130,8 +1130,10 @@ function setupButtons() {
     else getLocation();
   });
   $('darkbtn').addEventListener('click', toggleDark);
-  $('homebtn').addEventListener('click', goHome);
-  $('parkbtn').addEventListener('click', toggleParking);
+  $('homebtn').addEventListener('click', () => { goHome(); $('quickmenu').classList.add('hidden'); });
+  $('parkbtn').addEventListener('click', () => { toggleParking(); $('quickmenu').classList.add('hidden'); });
+  // Menu "Lagi" toggle
+  $('menubtn').addEventListener('click', () => $('quickmenu').classList.toggle('hidden'));
   $('gobtn').addEventListener('click', startNavigation);
   $('savefav').addEventListener('click', addFav);
   $('cancelroute').addEventListener('click', () => {
@@ -1152,21 +1154,28 @@ function setupButtons() {
     btn.addEventListener('click', () => searchPOI(btn.dataset.amenity));
   });
 
+  // Mod perjalanan (butang .travel)
+  document.querySelectorAll('.travel').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.travel').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      if (S.dest && S.userPos) fetchRoute(S.userPos, [S.dest.lng, S.dest.lat]);
+    });
+  });
+
   // Bottom sheet: lipat / buka (butang + pemegang tarik)
   const collapseBtn = $('collapsebtn');
   const sheetHandle = $('sheethandle');
-  const sheetBody = $('sheetbody');
   function toggleSheet() {
     const panel = $('routepanel');
     const collapsed = panel.classList.toggle('collapsed');
     collapseBtn.classList.toggle('expanded', collapsed);
-    collapseBtn.textContent = collapsed ? '⌃' : '⌄';
   }
   if (collapseBtn) collapseBtn.addEventListener('click', toggleSheet);
   if (sheetHandle) sheetHandle.addEventListener('click', toggleSheet);
 
   // Tukar pilihan routing -> kira semula
-  document.querySelectorAll('input[name="mode"], input[name="travel"], #avoidToll, #avoidHighway').forEach(el => {
+  document.querySelectorAll('input[name="mode"], #avoidToll, #avoidHighway').forEach(el => {
     el.addEventListener('change', () => {
       if (S.dest && S.userPos) fetchRoute(S.userPos, [S.dest.lng, S.dest.lat]);
     });

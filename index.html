@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<meta name="theme-color" content="#1e88e5">
+<meta name="theme-color" content="#1a73e8">
 <meta name="description" content="HalaTuju — aplikasi pandu arah ringan untuk Malaysia">
 <title>HalaTuju</title>
 <link rel="manifest" href="manifest.json">
@@ -12,114 +12,93 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
-<link href="style.css?v=21" rel="stylesheet">
+<link href="style.css?v=22" rel="stylesheet">
 </head>
 <body>
 <div id="map"></div>
 
-<!-- Bar carian + semua elemen atas (satu kontena, tiada overlap) -->
+<!-- ===== Bar carian (atas) ===== -->
 <div id="searchbar">
   <div class="search-box">
+    <svg class="ic ic-search" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.7.7l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0A4.5 4.5 0 1 1 14 9.5 4.5 4.5 0 0 1 9.5 14z"/></svg>
+    <input id="q" type="text" placeholder="Cari tempat atau destinasi" autocomplete="off">
     <button id="micbtn" class="mic" title="Carian suara">
       <svg viewBox="0 0 24 24"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2z"/></svg>
     </button>
-    <svg class="ic" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.7.7l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0A4.5 4.5 0 1 1 14 9.5 4.5 4.5 0 0 1 9.5 14z"/></svg>
-    <input id="q" type="text" placeholder="Cari tempat… (contoh: Masjid Negara, Menara KL)" autocomplete="off">
-    <button id="clear" class="x" title="Kosongkan">✕</button>
+    <button id="clear" class="x" title="Kosongkan">
+      <svg viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+    </button>
   </div>
 
-  <!-- Butang POI cepat -->
   <div id="poibar">
-    <button class="poi" data-amenity="masjid">🕌 Masjid</button>
-    <button class="poi" data-amenity="fuel">⛽ Minyak</button>
-    <button class="poi" data-amenity="clinic">🏥 Klinik</button>
-    <button class="poi" data-amenity="atm">🏧 ATM</button>
-    <button class="poi" data-amenity="school">🏫 Sekolah</button>
-    <button class="poi" data-amenity="hospital">🚑 Hospital</button>
+    <button class="poi" data-amenity="masjid"><svg class="poi-ic" viewBox="0 0 24 24"><path d="M12 3a3 3 0 0 0-3 3v2H7a2 2 0 0 0-2 2v3h14v-3a2 2 0 0 0-2-2h-2V6a3 3 0 0 0-3-3zm7 10h-2v7h2v-7zm-12 0H5v7h2v-7z"/></svg>Masjid</button>
+    <button class="poi" data-amenity="fuel"><svg class="poi-ic" viewBox="0 0 24 24"><path d="M19.77 7.23l.01-.01-3.72-3.72L15 4.56l2.11 2.11c-.94.36-1.61 1.26-1.61 2.33a2.5 2.5 0 0 0 2.5 2.5c.36 0 .69-.08 1-.21v7.21a1 1 0 0 1-2 0V14a2 2 0 0 0-2-2h-1V5a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v16h10v-7.5h1.5v5.5a2.5 2.5 0 0 0 5 0V9c0-.69-.28-1.32-.73-1.77zM12 10H6V5h6v5z"/></svg>Minyak</button>
+    <button class="poi" data-amenity="clinic"><svg class="poi-ic" viewBox="0 0 24 24"><path d="M19 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm-1 11h-3v3h-2v-3h-3v-2h3V9h2v3h3v2z"/></svg>Klinik</button>
+    <button class="poi" data-amenity="atm"><svg class="poi-ic" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.31-8.86c-1.77-.45-2.34-.94-2.34-1.67 0-.84.79-1.43 2.1-1.43 1.38 0 1.9.66 1.94 1.64h1.71c-.05-1.34-.87-2.57-2.49-2.97V5H10.9v1.69c-1.51.32-2.72 1.3-2.72 2.81 0 1.79 1.49 2.69 3.66 3.21 1.95.46 2.34 1.15 2.34 1.87 0 .53-.39 1.39-2.1 1.39-1.6 0-2.23-.72-2.32-1.64H8.04c.1 1.7 1.36 2.66 2.86 2.97V19h1.42v-1.69c1.63-.36 2.72-1.32 2.72-2.87 0-1.68-1.32-2.68-3.73-3.3z"/></svg>ATM</button>
+    <button class="poi" data-amenity="school"><svg class="poi-ic" viewBox="0 0 24 24"><path d="M12 3 1 9l11 6 9-4.91V17h2V9L12 3zM5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z"/></svg>Sekolah</button>
+    <button class="poi" data-amenity="hospital"><svg class="poi-ic" viewBox="0 0 24 24"><path d="M19 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm-1 11h-3v3h-2v-3h-3v-2h3V9h2v3h3v2z"/></svg>Hospital</button>
   </div>
 
-  <!-- Panel kegemaran -->
-  <div id="favbar" class="hidden">
-    <div id="favlist"></div>
-    <button id="favmanage" class="ghost small">⭐ Urus</button>
-  </div>
-
-  <!-- Panel sejarah -->
-  <div id="histbar" class="hidden">
-    <div id="histlist"></div>
-  </div>
-
+  <div id="favbar" class="hidden"><div id="favlist"></div></div>
+  <div id="histbar" class="hidden"><div id="histlist"></div></div>
   <div id="results"></div>
 </div>
 
-<!-- Butang terapung -->
-<button id="myloc" class="fab" title="Lokasi saya">
-  <svg viewBox="0 0 24 24"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm8.94 3A8.994 8.994 0 0 0 13 3.06V1h-2v2.06A8.994 8.994 0 0 0 3.06 11H1v2h2.06A8.994 8.994 0 0 0 11 20.94V23h2v-2.06A8.994 8.994 0 0 0 20.94 13H23v-2h-2.06zM12 19a7 7 0 1 1 0-14 7 7 0 0 1 0 14z"/></svg>
-</button>
-<button id="darkbtn" class="fab fab2" title="Mod malam">
-  <svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.389 5.389 0 0 1-4.4 2.26 5.403 5.403 0 0 1-3.14-9.8c-.44-.06-.9-.1-1.36-.1z"/></svg>
-</button>
-<button id="homebtn" class="fab fab3" title="Rumah">
-  <span class="fab-emoji">🏠</span>
-</button>
-<button id="parkbtn" class="fab fab4" title="Parkir">
-  <span class="fab-emoji">🅿️</span>
-</button>
-<button id="addplacebtn" class="fab fab5" title="Tambah tempat">
-  <span class="fab-emoji">➕</span>
-</button>
-<button id="statsbtn" class="fab fab6" title="Statistik">
-  <span class="fab-emoji">📊</span>
-</button>
+<!-- ===== Butang terapung (kanan bawah) ===== -->
+<div id="fab-stack">
+  <button id="myloc" class="fab" title="Lokasi saya">
+    <svg viewBox="0 0 24 24"><path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3A8.994 8.994 0 0 0 13 3.06V1h-2v2.06A8.994 8.994 0 0 0 3.06 11H1v2h2.06A8.994 8.994 0 0 0 11 20.94V23h2v-2.06A8.994 8.994 0 0 0 20.94 13H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/></svg>
+  </button>
+  <button id="darkbtn" class="fab" title="Mod malam">
+    <svg viewBox="0 0 24 24"><path d="M9.37 5.51A7.35 7.35 0 0 0 9.1 7.5c0 4.08 3.32 7.4 7.4 7.4.68 0 1.37-.09 2-.27a7.5 7.5 0 1 1-9.13-9.12z"/></svg>
+  </button>
+  <button id="menubtn" class="fab" title="Lagi">
+    <svg viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
+  </button>
+</div>
 
-<!-- Modal statistik -->
+<!-- Menu sekunder (buka bila tekan "Lagi") -->
+<div id="quickmenu" class="hidden">
+  <button id="homebtn" class="qitem"><svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg><span>Rumah</span></button>
+  <button id="parkbtn" class="qitem"><svg viewBox="0 0 24 24"><path d="M13 3H7v18h2v-8h4a6 6 0 0 0 0-12zm0 8H9V5h4a3 3 0 0 1 0 6z"/></svg><span>Parkir</span></button>
+  <button id="addplacebtn" class="qitem"><svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg><span>Tambah</span></button>
+  <button id="statsbtn" class="qitem"><svg viewBox="0 0 24 24"><path d="M19 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm-9 14H7v-7h3v7zm5 0h-3V7h3v10z"/></svg><span>Statistik</span></button>
+</div>
+
+<!-- ===== Modal statistik ===== -->
 <div id="statsmodal" class="hidden">
   <div class="modal-box">
-    <div class="modal-title">📊 Statistik HalaTuju</div>
+    <div class="modal-title">Statistik HalaTuju</div>
     <div class="stats-grid">
-      <div class="stat-card">
-        <div class="stat-num" id="stat-total">—</div>
-        <div class="stat-label">Tempat dalam pangkalan</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-num" id="stat-today">—</div>
-        <div class="stat-label">Ditambah hari ini</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-num" id="stat-favs">—</div>
-        <div class="stat-label">Kegemaran anda</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-num" id="stat-history">—</div>
-        <div class="stat-label">Sejarah anda</div>
-      </div>
+      <div class="stat-card"><div class="stat-num" id="stat-total">—</div><div class="stat-label">Tempat pangkalan</div></div>
+      <div class="stat-card"><div class="stat-num" id="stat-today">—</div><div class="stat-label">Hari ini</div></div>
+      <div class="stat-card"><div class="stat-num" id="stat-favs">—</div><div class="stat-label">Kegemaran</div></div>
+      <div class="stat-card"><div class="stat-num" id="stat-history">—</div><div class="stat-label">Sejarah</div></div>
     </div>
-    <div class="modal-actions">
-      <button id="stats-close" class="primary">Tutup</button>
-    </div>
+    <div class="modal-actions"><button id="stats-close" class="primary">Tutup</button></div>
   </div>
 </div>
 
-<!-- Modal tambah tempat -->
+<!-- ===== Modal tambah tempat ===== -->
 <div id="addplacemodal" class="hidden">
   <div class="modal-box">
-    <div class="modal-title">➕ Tambah Tempat</div>
+    <div class="modal-title">Tambah Tempat</div>
     <div id="addplace-coords" class="modal-sub"></div>
-    <input id="addplace-name" type="text" placeholder="Nama tempat (contoh: Kedai Roti Pak Ali)" autocomplete="off">
-    <input id="addplace-latlng" type="text" placeholder="Koordinat (lat, lng) — pilihan, contoh: 1.6787, 103.6412" autocomplete="off" inputmode="decimal">
+    <input id="addplace-name" type="text" placeholder="Nama tempat" autocomplete="off">
+    <input id="addplace-latlng" type="text" placeholder="Koordinat (lat, lng) — pilihan" autocomplete="off" inputmode="decimal">
     <select id="addplace-type">
-      <option value="shop">🏪 Kedai / Perniagaan</option>
-      <option value="amenity=place_of_worship">🕌 Tempat ibadah</option>
-      <option value="amenity=school">🏫 Sekolah</option>
-      <option value="amenity=restaurant">🍽️ Restoran</option>
-      <option value="amenity=cafe">☕ Kafe</option>
-      <option value="amenity=fuel">⛽ Stesen minyak</option>
-      <option value="amenity=hospital">🏥 Hospital / Klinik</option>
-      <option value="tourism=attraction">📸 Tempat menarik</option>
-      <option value="other">📍 Lain-lain</option>
-      <option value="custom">✏️ Custom (taip sendiri)</option>
+      <option value="shop">Kedai / Perniagaan</option>
+      <option value="amenity=place_of_worship">Tempat ibadah</option>
+      <option value="amenity=school">Sekolah</option>
+      <option value="amenity=restaurant">Restoran</option>
+      <option value="amenity=cafe">Kafe</option>
+      <option value="amenity=fuel">Stesen minyak</option>
+      <option value="amenity=hospital">Hospital / Klinik</option>
+      <option value="tourism=attraction">Tempat menarik</option>
+      <option value="other">Lain-lain</option>
+      <option value="custom">Custom (taip sendiri)</option>
     </select>
-    <input id="addplace-custom-type" type="text" class="hidden" placeholder="Jenis tempat (contoh: Bengkel, Kedai kek, Surau...)" autocomplete="off">
+    <input id="addplace-custom-type" type="text" class="hidden" placeholder="Jenis tempat" autocomplete="off">
     <div class="modal-actions">
       <button id="addplace-save" class="primary">Simpan</button>
       <button id="addplace-osm" class="ghost">Sumbang ke OSM</button>
@@ -128,37 +107,39 @@
   </div>
 </div>
 
-<!-- Panel ringkasan laluan -->
+<!-- ===== Panel laluan (bottom sheet) ===== -->
 <div id="routepanel" class="hidden">
-  <div class="sheet-handle" id="sheethandle">
-    <div class="handle-bar"></div>
-  </div>
+  <div class="sheet-handle" id="sheethandle"><div class="handle-bar"></div></div>
   <div class="sheet-head">
     <div id="routesummary"></div>
-    <button id="collapsebtn" class="collapse-btn" title="Sembunyi">⌄</button>
+    <button id="collapsebtn" class="collapse-btn" title="Sembunyi">
+      <svg viewBox="0 0 24 24"><path d="M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6z"/></svg>
+    </button>
   </div>
   <div class="sheet-body" id="sheetbody">
     <div id="alternates"></div>
     <div id="routeopts">
-      <label class="opt"><input type="radio" name="mode" value="fastest" checked> 🚀 Paling pantas</label>
-      <label class="opt"><input type="radio" name="mode" value="shortest"> 📏 Paling dekat</label>
-      <label class="opt chk"><input type="checkbox" id="avoidToll"> 🚧 Elak tol</label>
-      <label class="opt chk"><input type="checkbox" id="avoidHighway"> 🛣️ Elak lebuh raya</label>
-      <label class="opt"><input type="radio" name="travel" value="auto" checked> 🚗 Kereta</label>
-      <label class="opt"><input type="radio" name="travel" value="pedestrian"> 🚶 Jalan kaki</label>
-      <label class="opt"><input type="radio" name="travel" value="bicycle"> 🚲 Basikal</label>
+      <label class="opt"><input type="radio" name="mode" value="fastest" checked> Paling pantas</label>
+      <label class="opt"><input type="radio" name="mode" value="shortest"> Paling dekat</label>
+      <label class="opt chk"><input type="checkbox" id="avoidToll"> Elak tol</label>
+      <label class="opt chk"><input type="checkbox" id="avoidHighway"> Elak lebuh raya</label>
+    </div>
+    <div class="travel-opts">
+      <button class="travel active" data-travel="auto"><svg viewBox="0 0 24 24"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/></svg> Kereta</button>
+      <button class="travel" data-travel="pedestrian"><svg viewBox="0 0 24 24"><path d="M13.5 5.5c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zM9.8 8.9L7 23h2.1l1.8-8 2.1 2v6h2v-7.5l-2.1-2 .6-3C14.8 12 16.8 13 19 13v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1L6 8.3V13h2V9.6l1.8-.7z"/></svg> Jalan</button>
+      <button class="travel" data-travel="bicycle"><svg viewBox="0 0 24 24"><path d="M15.5 5.5c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zM5 12c-2.8 0-5 2.2-5 5s2.2 5 5 5 5-2.2 5-5-2.2-5-5-5zm0 8.5c-1.9 0-3.5-1.6-3.5-3.5s1.6-3.5 3.5-3.5 3.5 1.6 3.5 3.5-1.6 3.5-3.5 3.5zm5.8-10l2.4-2.4.8.8c1.3 1.3 3 2.1 5.1 2.1V9c-1.5 0-2.7-.6-3.6-1.5l-1.9-1.9c-.5-.4-1-.6-1.6-.6s-1.1.2-1.4.6L7.8 8.4c-.4.4-.6.9-.6 1.4 0 .6.2 1.1.6 1.4L11 14v5h2v-6.2l-2.2-2.3zM19 12c-2.8 0-5 2.2-5 5s2.2 5 5 5 5-2.2 5-5-2.2-5-5-5zm0 8.5c-1.9 0-3.5-1.6-3.5-3.5s1.6-3.5 3.5-3.5 3.5 1.6 3.5 3.5-1.6 3.5-3.5 3.5z"/></svg> Basikal</button>
     </div>
     <div class="row">
-      <button id="savefav" class="ghost">⭐ Simpan</button>
-      <button id="gobtn" class="primary">🚗 Mula Pandu Arah</button>
+      <button id="savefav" class="ghost">Simpan</button>
+      <button id="gobtn" class="primary">Mula Pandu Arah</button>
       <button id="cancelroute" class="ghost">Batal</button>
     </div>
   </div>
 </div>
 
-<!-- Banner navigasi aktif -->
+<!-- ===== Banner navigasi aktif ===== -->
 <div id="navbanner" class="hidden">
-  <div class="nav-top">
+  <div class="nav-main">
     <div id="navmaneuver" class="maneuver-icon"></div>
     <div class="nav-text">
       <div id="navinstruction">—</div>
@@ -169,20 +150,21 @@
       <div id="navremaining">—</div>
     </div>
   </div>
-  <div id="speedbox" class="hidden"><span id="speedval">0</span><span class="unit">km/j</span></div>
-  <div id="limitbox" class="hidden">🛑 Had laju <span id="limitval">—</span></div>
+  <div class="nav-status">
+    <div id="speedbox" class="hidden"><span id="speedval">0</span><span class="unit">km/j</span></div>
+    <div id="limitbox" class="hidden"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg><span id="limitval">—</span></div>
+  </div>
   <div class="nav-bottom">
-    <button id="stopnav" class="danger">✕ Tamat</button>
-    <button id="recenter" class="ghost">📍 Pusat</button>
+    <button id="recenter" class="ghost">Pusat</button>
+    <button id="stopnav" class="danger">Tamat</button>
   </div>
 </div>
 
 <div id="toast"></div>
-
 <div id="copyright">HalaTuju © 2026 Ashraf</div>
 
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-<script src="places-johor.js?v=21"></script>
-<script src="app.js?v=21"></script>
+<script src="places-johor.js?v=22"></script>
+<script src="app.js?v=22"></script>
 </body>
 </html>
