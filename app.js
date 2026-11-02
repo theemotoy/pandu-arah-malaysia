@@ -329,8 +329,35 @@ function search(text) {
   const url = `https://nominatim.openstreetmap.org/search?format=json&limit=7&countrycodes=my&q=${encodeURIComponent(text)}&accept-language=ms`;
   fetch(url, { headers:{ 'Accept':'application/json', 'User-Agent':'HalaTuju/1.0' } })
     .then(r => r.json())
-    .then(rs => renderResults(rs))
-    .catch(() => toast('Carian gagal. Cuba lagi.'));
+    .then(rs => {
+      renderResults(rs);
+      // Jika OSM tak jumpa hasil, guna OpenCage (geocoder komersial) sebagai sandaran
+      if (!rs || !rs.length) searchGeocode(text);
+    })
+    .catch(() => searchGeocode(text));
+}
+
+// Sandaran: OpenCage (proxy worker, key tersembunyi) — liputan lebih penuh
+const GEOCODE_ENDPOINT = 'https://halatuju-geocode.the-emotoy.workers.dev';
+function searchGeocode(text) {
+  const [lng, lat] = S.userPos || [null, null];
+  let url = GEOCODE_ENDPOINT + '/search?q=' + encodeURIComponent(text);
+  if (lat && lng) url += '&lat=' + lat + '&lng=' + lng;
+  fetch(url).then(r => r.json()).then(d => {
+    const places = d.places || [];
+    if (!places.length) {
+      const res = $('results');
+      if (!res.querySelector('.res-item')) {
+        res.innerHTML = '<div class="res-item">Tiada hasil</div>';
+        res.classList.add('show');
+      }
+      return;
+    }
+    renderResults(places.map(p => ({
+      display_name: p.formatted || p.name,
+      lon: String(p.lng), lat: String(p.lat),
+    })));
+  }).catch(() => {});
 }
 
 // Cari dalam pangkalan tempat berkongsi (cloud) — gabung hasil ke UI
