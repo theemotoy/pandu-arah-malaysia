@@ -1,0 +1,8 @@
+name = "halatuju-places"
+main = "src/index.js"
+compatibility_date = "2025-01-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "halatuju-places-db"
+database_id = "ceacaebc-18d5-4060-81dc-4c4c7dbf37dc"

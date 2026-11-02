@@ -319,6 +319,8 @@ function search(text) {
     })));
     return;
   }
+  // 1.5) semak pangkalan tempat berkongsi (cloud) — tempat ditambah mana-mana pengguna
+  searchCloudPlaces(text);
   // 2) Carian pintar AI — jika ayat lebih dari satu perkataan (niat semula jadi)
   if (text.split(' ').length >= 3 && AI_ENDPOINT) {
     aiSearch(text).then(() => {}).catch(() => {});
@@ -329,6 +331,32 @@ function search(text) {
     .then(r => r.json())
     .then(rs => renderResults(rs))
     .catch(() => toast('Carian gagal. Cuba lagi.'));
+}
+
+// Cari dalam pangkalan tempat berkongsi (cloud) — gabung hasil ke UI
+function searchCloudPlaces(text) {
+  fetch(PLACES_ENDPOINT + '/search?q=' + encodeURIComponent(text))
+    .then(r => r.json())
+    .then(d => {
+      const places = d.places || [];
+      if (!places.length) return;
+      // Papar sebagai hasil (gabung dengan hasil OSM nanti)
+      const res = $('results');
+      // Jika hasil OSM belum tiba, tunjuk tempat cloud dulu
+      places.forEach(p => {
+        const div = document.createElement('div');
+        div.className = 'res-item';
+        div.innerHTML = `<div class="name">${escapeHtml(p.name)}</div>
+                         <div class="sub">🌐 Pangkalan berkongsi</div>`;
+        div.onclick = () => {
+          setDestination(p.lng, p.lat, p.name);
+          res.classList.remove('show');
+        };
+        res.appendChild(div);
+      });
+      if (!res.classList.contains('show')) res.classList.add('show');
+    })
+    .catch(() => {}); // senyap
 }
 
 // ---- Carian pintar AI (Cloudflare Workers) ----
@@ -622,6 +650,9 @@ function renderHistory() {
 // ---- Tambah tempat (Tempat saya + sumbang ke OSM) ----
 let addPlacePos = null; // [lng, lat] lokasi dipilih untuk tambah
 
+// Endpoint pangkalan tempat berkongsi (cloud)
+const PLACES_ENDPOINT = 'https://halatuju-places.the-emotoy.workers.dev';
+
 function getMyPlaces() {
   try { return JSON.parse(localStorage.getItem('halaTuju.myplaces') || '[]'); }
   catch(e) { return []; }
@@ -645,10 +676,28 @@ function saveMyPlace() {
   if (!name) { toast('Sila masukkan nama tempat'); return; }
   if (!addPlacePos) { toast('Tiada lokasi dipilih'); return; }
   const type = $('addplace-type').value;
+  const lat = addPlacePos[1], lng = addPlacePos[0];
+
+  // 1) simpan lokal (offline)
   let places = getMyPlaces();
-  places.push({ name, lat: addPlacePos[1], lng: addPlacePos[0], type });
+  places.push({ name, lat, lng, type });
   saveMyPlaces(places);
-  toast('✅ "' + name + '" disimpan — boleh dicari sekarang');
+
+  // 2) simpan ke cloud (semua pengguna dapat)
+  fetch(PLACES_ENDPOINT + '/add', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, lat, lng, type }),
+  }).then(r => r.json()).then(d => {
+    if (d.duplicate) {
+      toast('ℹ️ "' + name + '" sudah wujud dalam pangkalan');
+    } else if (d.ok) {
+      toast('✅ "' + name + '" disimpan — boleh dicari semua orang');
+    }
+  }).catch(() => {
+    toast('✅ "' + name + '" disimpan (lokal sahaja)');
+  });
+
   closeAddPlace();
 }
 
