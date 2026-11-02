@@ -715,6 +715,8 @@ function openAddPlace(lng, lat) {
   addPlacePos = [lng, lat];
   $('addplace-coords').textContent = 'Lokasi: ' + lat.toFixed(5) + ', ' + lng.toFixed(5);
   $('addplace-name').value = '';
+  // Isi kotak koordinat dengan lokasi semasa (boleh diedit pengguna)
+  $('addplace-latlng').value = lat.toFixed(6) + ', ' + lng.toFixed(6);
   // reset dropdown & input custom
   $('addplace-type').value = 'shop';
   $('addplace-custom-type').value = '';
@@ -727,12 +729,30 @@ function closeAddPlace() {
   addPlacePos = null;
 }
 
+// Parse koordinat dari kotak input (sokong "lat, lng" atau "lat lng")
+function parseLatLng(str) {
+  if (!str) return null;
+  const parts = str.split(/[,;\s]+/).map(s => parseFloat(s.trim())).filter(n => !isNaN(n));
+  if (parts.length < 2) return null;
+  const lat = parts[0], lng = parts[1];
+  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
+  return { lat, lng };
+}
+
 function saveMyPlace() {
   const name = $('addplace-name').value.trim();
   if (!name) { toast('Sila masukkan nama tempat'); return; }
   if (!addPlacePos) { toast('Tiada lokasi dipilih'); return; }
   const type = resolveType();
-  const lat = addPlacePos[1], lng = addPlacePos[0];
+
+  // Guna koordinat manual jika pengguna isi kotak
+  let lat = addPlacePos[1], lng = addPlacePos[0];
+  const manual = parseLatLng($('addplace-latlng').value);
+  if (manual) {
+    lat = manual.lat; lng = manual.lng;
+    addPlacePos = [lng, lat];
+    $('addplace-coords').textContent = 'Lokasi: ' + lat.toFixed(5) + ', ' + lng.toFixed(5);
+  }
 
   // 1) simpan lokal (offline)
   let places = getMyPlaces();
