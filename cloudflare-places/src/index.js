@@ -40,7 +40,12 @@ export default {
       return handleStats(request, env);
     }
 
-    return json({ ok: true, name: 'HalaTuju Places', endpoints: ['/add', '/search', '/nearby', '/index', '/stats'] });
+    // Padam tempat (admin sahaja, perlu kunci)
+    if (url.pathname === '/delete' && request.method === 'POST') {
+      return handleDelete(request, env);
+    }
+
+    return json({ ok: true, name: 'HalaTuju Places', endpoints: ['/add', '/search', '/nearby', '/index', '/stats', '/delete'] });
   },
 };
 
@@ -169,5 +174,26 @@ async function handleStats(request, env) {
     });
   } catch (e) {
     return json({ error: 'Ralat stats: ' + (e.message || e) }, 500);
+  }
+}
+
+// Padam tempat — admin sahaja (perlu kunci ADMIN_KEY yang betul)
+async function handleDelete(request, env) {
+  try {
+    const { id, key } = await request.json();
+    if (!id) return json({ error: 'Perlu id tempat' }, 400);
+
+    // Kunci admin disimpan sebagai secret (env.ADMIN_KEY)
+    if (!env.ADMIN_KEY || key !== env.ADMIN_KEY) {
+      return json({ error: 'Tiada kebenaran (kunci salah)' }, 403);
+    }
+
+    const { meta } = await env.DB.prepare('DELETE FROM places WHERE id = ?').bind(id).run();
+    if (meta.changes === 0) {
+      return json({ ok: false, message: 'Tempat tidak dijumpai' });
+    }
+    return json({ ok: true, deleted: id });
+  } catch (e) {
+    return json({ error: 'Ralat delete: ' + (e.message || e) }, 500);
   }
 }

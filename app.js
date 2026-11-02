@@ -378,16 +378,44 @@ function searchCloudPlaces(text) {
         const div = document.createElement('div');
         div.className = 'res-item';
         div.innerHTML = `<div class="name">${escapeHtml(p.name)}</div>
-                         <div class="sub">🌐 Pangkalan berkongsi</div>`;
+                         <div class="sub">🌐 Pangkalan berkongsi · tekan lama untuk padam</div>`;
         div.onclick = () => {
           setDestination(p.lng, p.lat, p.name);
           res.classList.remove('show');
         };
+        // Tekan lama = padam (admin)
+        div.addEventListener('contextmenu', e => { e.preventDefault(); askDeletePlace(p); });
+        let longPressTimer = null;
+        div.addEventListener('touchstart', () => {
+          longPressTimer = setTimeout(() => askDeletePlace(p), 700);
+        });
+        div.addEventListener('touchend', () => clearTimeout(longPressTimer));
+        div.addEventListener('touchmove', () => clearTimeout(longPressTimer));
         res.appendChild(div);
       });
       if (!res.classList.contains('show')) res.classList.add('show');
     })
     .catch(() => {}); // senyap
+}
+
+// Minta kunci admin & padam tempat salah
+function askDeletePlace(p) {
+  const key = prompt('Padam "' + p.name + '"?\nMasukkan kunci admin:');
+  if (!key) return;
+  fetch(PLACES_ENDPOINT + '/delete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id: p.id, key: key.trim() }),
+  }).then(r => r.json()).then(d => {
+    if (d.ok) {
+      toast('🗑️ "' + p.name + '" dipadam');
+      // segarkan hasil
+      const res = $('results');
+      res.classList.remove('show');
+    } else {
+      toast('❌ ' + (d.error || 'Gagal padam'));
+    }
+  }).catch(() => toast('❌ Gagal padam'));
 }
 
 // ---- Carian pintar AI (Cloudflare Workers) ----
