@@ -107,9 +107,9 @@ function bearingTo(a, b) {
   return (Math.atan2(y,x)*180/Math.PI + 360) % 360;
 }
 
-// ---- Penanda arah ----
+// ---- Penanda arah (anak panah kenderaan gaya Waze) ----
 function arrowSVG() {
-  return `<svg viewBox="0 0 24 24"><path d="M12 2 L21 20 L12 16 L3 20 Z" fill="#1e88e5" stroke="#fff" stroke-width="1"/></svg>`;
+  return `<svg viewBox="0 0 24 24"><path d="M12 1.5 L21.5 21.5 L12 17 L2.5 21.5 Z" fill="#2f9ee0" stroke="#ffffff" stroke-width="1.4"/></svg>`;
 }
 function maneuverSVG(dir) {
   const deg = (dir==='left'||dir==='slight-left'||dir==='sharp-left') ? -90
@@ -134,7 +134,8 @@ function initMap() {
   const el = document.createElement('div');
   el.className = 'user-arrow';
   el.innerHTML = arrowSVG();
-  el.style.width = '28px'; el.style.height = '28px';
+  el.style.width = '40px'; el.style.height = '40px';
+  el.style.filter = 'drop-shadow(0 2px 4px rgba(0,0,0,.35))';
   S.userMarker = new maplibregl.Marker({ element: el, rotationAlignment:'map' })
     .setLngLat([0,0]).addTo(S.map);
 
@@ -193,10 +194,10 @@ function addRouteLayers() {
   S.map.addSource('route', { type:'geojson', data: data });
   S.map.addLayer({ id:'route-casing', type:'line', source:'route',
     layout:{'line-join':'round','line-cap':'round'},
-    paint:{'line-color':'#ffffff','line-width':10} });
+    paint:{'line-color':'#ffffff','line-width':11} });
   S.map.addLayer({ id:'route-line', type:'line', source:'route',
     layout:{'line-join':'round','line-cap':'round'},
-    paint:{'line-color':'#1e88e5','line-width':6} });
+    paint:{'line-color':'#713cc7','line-width':7} });
 
   // Sumber trafik (bulatan warna) — tambah semula selepas style berubah
   if (!S.map.getSource('traffic')) {

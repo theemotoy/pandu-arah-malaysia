@@ -160,37 +160,53 @@ button.ghost { background:var(--bg); color:var(--ink); border:none; border-radiu
   padding:15px; font-size:14px; cursor:pointer; }
 button.danger { background:var(--danger); color:#fff; border:none; border-radius:14px;
   padding:15px 18px; font-size:14px; font-weight:600; cursor:pointer; }
+/* Dalam banner navigasi, butang Tamat jadi putih/merah */
+#navbanner button.danger { background:#fff; color:#d93025; }
 
-/* ===== Banner navigasi ===== */
+/* ===== Banner navigasi (gaya Waze: hijau) ===== */
 #navbanner { position:absolute; top:0; left:0; right:0; z-index:7;
-  background:var(--blue); color:#fff; padding:16px 16px 14px; box-shadow:var(--shadow-lg); }
+  background:linear-gradient(180deg, #23a144, #1e8f3c); color:#fff;
+  padding:16px 16px 14px; box-shadow:var(--shadow-lg); }
 #navbanner.hidden { display:none; }
 .nav-main { display:flex; align-items:center; gap:14px; }
-.maneuver-icon { width:56px; height:56px; flex:0 0 auto; display:flex; align-items:center; justify-content:center; }
-.maneuver-icon svg { width:50px; height:50px; }
+.maneuver-icon { width:60px; height:60px; flex:0 0 auto; display:flex; align-items:center; justify-content:center;
+  background:rgba(255,255,255,.18); border-radius:14px; }
+.maneuver-icon svg { width:46px; height:46px; }
 .nav-text { flex:1; }
-#navinstruction { font-size:21px; font-weight:700; line-height:1.2; }
-#navdistance { font-size:15px; opacity:.92; margin-top:3px; }
+#navinstruction { font-size:22px; font-weight:800; line-height:1.15; }
+#navdistance { font-size:15px; opacity:.95; margin-top:3px; font-weight:500; }
 .nav-meta { text-align:right; flex:0 0 auto; }
-#naveta { font-size:24px; font-weight:700; }
-#navremaining { font-size:13px; opacity:.92; }
+#naveta { font-size:26px; font-weight:800; }
+#navremaining { font-size:13px; opacity:.95; }
 
-/* Kelajuan + had laju (dalam banner, sebaris) */
-.nav-status { display:flex; gap:8px; margin-top:12px; }
-#speedbox { flex:0 0 auto; background:rgba(255,255,255,.18); border-radius:12px;
-  padding:6px 14px; text-align:center; min-width:64px; }
+/* Bar ETA bawah (masa tiba · tempoh · baki jarak) */
+.nav-status { display:flex; align-items:center; gap:10px; margin-top:14px; }
+
+/* Kelajuan — bulatan besar gaya Waze */
+#speedbox { flex:0 0 auto; width:76px; height:76px; border-radius:50%;
+  background:rgba(255,255,255,.22); border:3px solid rgba(255,255,255,.85);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  text-align:center; box-shadow:inset 0 2px 6px rgba(0,0,0,.12); }
 #speedbox.hidden { display:none; }
-#speedval { font-size:24px; font-weight:800; }
-#speedbox .unit { font-size:11px; opacity:.85; margin-left:2px; }
-#speedbox.over { background:var(--danger); }
-#limitbox { flex:0 0 auto; display:flex; align-items:center; gap:6px;
-  background:rgba(255,255,255,.18); border-radius:12px; padding:6px 12px; font-size:14px; }
+#speedval { font-size:30px; font-weight:900; line-height:1; }
+#speedbox .unit { font-size:10px; opacity:.9; margin-top:1px; }
+#speedbox.over { background:#d93025; border-color:#fff; }
+
+/* Had laju — bulatan merah (macam papan tanda) */
+#limitbox { flex:0 0 auto; display:flex; align-items:center; justify-content:center;
+  width:44px; height:44px; border-radius:50%; background:#fff; color:#d93025;
+  border:3px solid #d93025; font-weight:900; font-size:16px; }
 #limitbox.hidden { display:none; }
-#limitbox svg { width:20px; height:20px; fill:#fff; }
-#limitbox span { font-weight:800; }
+#limitbox svg { display:none; }
+#limitbox span { font-weight:900; }
+
+/* ETA text dalam status bar */
+.nav-eta { flex:1; display:flex; flex-direction:column; gap:2px; }
+.nav-eta .eta-line { font-size:15px; font-weight:700; }
+.nav-eta .eta-sub { font-size:12px; opacity:.9; }
 
 .nav-bottom { display:flex; gap:8px; margin-top:12px; }
-.nav-bottom .ghost { background:rgba(255,255,255,.18); color:#fff; flex:1; }
+.nav-bottom .ghost { background:rgba(255,255,255,.22); color:#fff; flex:1; }
 .nav-bottom .danger { flex:0 0 auto; }
 
 /* ===== Toast ===== */
