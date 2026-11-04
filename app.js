@@ -161,7 +161,7 @@ function initMap() {
       if (Date.now() - lastMapInteraction >= 4500 && S.navigating) {
         followMode = true;
         // kekalkan bearing semasa, center ke lokasi
-        S.map.easeTo({ center: S.userPos, bearing: S.map.getBearing(), zoom: 17, pitch: 45, padding: { top: 220, bottom: 130, left: 60, right: 60 }, duration: 600 });
+        S.map.easeTo({ center: S.userPos, bearing: S.map.getBearing(), zoom: 17, pitch: 45, padding: { top: 90, bottom: 220, left: 60, right: 80 }, duration: 600 });
       }
     }, 5000);
   };
@@ -1019,8 +1019,10 @@ function startNavigation() {
   $('quickmenu').classList.add('hidden');
   $('speedbox').classList.remove('hidden');
   $('limitbox').classList.remove('hidden');
+  $('etabar').classList.remove('hidden');
+  $('stopnav').classList.remove('hidden');
   followMode = true;
-  S.map.easeTo({ zoom: 17, pitch: 45, padding: { top: 220, bottom: 130, left: 60, right: 60 } });
+  S.map.easeTo({ zoom: 17, pitch: 45, padding: { top: 90, bottom: 220, left: 60, right: 80 } });
   S._lastStep = -1;
   updateNavigation();
 }
@@ -1031,6 +1033,8 @@ function stopNavigation() {
   $('fab-stack').classList.remove('hidden');
   $('speedbox').classList.add('hidden');
   $('limitbox').classList.add('hidden');
+  $('etabar').classList.add('hidden');
+  $('stopnav').classList.add('hidden');
   $('poibar').classList.remove('hidden');
   const src = S.map.getSource('route');
   if (src) src.setData(emptyLine());
@@ -1054,10 +1058,11 @@ function updateNavigation() {
   const shape = S.route.shape;
   const curIdx = nearestShapeIndex(shape, S.userPos);
 
-  // auto-reroute: hanya bila betul-betul terpesong jauh (>150m, bukan lompatan GPS kecil).
-  // Gerak kerja Waze/Maps: reroute senyap, tak buka menu, tak mengganggu pemandu.
+  // Reroute PASIF: tanpa live traffic, reroute auto kurang diperlukan.
+  // Hanya kira semula bila pengguna betul-betul tersasar jauh (>300m dari laluan,
+  // contoh tersilap keluar simpang), dan barulah senyap. Bukan untuk lompatan GPS kecil.
   const offRouteDist = haversine(S.userPos[1], S.userPos[0], shape[curIdx][1], shape[curIdx][0]);
-  if (offRouteDist > 150 && S.dest && Date.now() - (S._lastReroute||0) > 20000) {
+  if (offRouteDist > 300 && S.dest && Date.now() - (S._lastReroute||0) > 30000) {
     S._lastReroute = Date.now();
     fetchRoute(S.userPos, [S.dest.lng, S.dest.lat]).then(() => {
       if (S.navigating) updateNavigation();
@@ -1131,7 +1136,7 @@ function checkSpeedLimit() {
       let ms = els[0].tags.maxspeed;
       ms = String(ms).replace(/\D/g, '');
       if (!ms) { $('limitbox').classList.add('hidden'); return; }
-      $('limitval').textContent = ms + ' km/j';
+      $('limitval').textContent = ms;
       $('limitbox').classList.remove('hidden');
     })
     .catch(() => { /* senyap - had laju optional */ });
@@ -1147,12 +1152,33 @@ function followBearing(bearing) {
     center: S.userPos,
     zoom: 17,
     pitch: 45,
-    padding: { top: 220, bottom: 130, left: 60, right: 60 },
+    padding: { top: 90, bottom: 220, left: 60, right: 80 },
     duration: 800,
   });
 }
 
-// ---- TTS (sebutan Melayu) ----
+// ---- TTS (sebutan Melayu + pelbagai suara) ----
+let voicePrefs = { voice: null, rate: 1.0, pitch: 1.0 };
+try { voicePrefs = Object.assign(voicePrefs, JSON.parse(localStorage.getItem('halaTuju.voice') || '{}')); } catch(e) {}
+
+function loadVoices() {
+  return new Promise(res => {
+    const v = speechSynthesis.getVoices();
+    if (v && v.length) { res(v); return; }
+    speechSynthesis.onvoiceschanged = () => res(speechSynthesis.getVoices());
+  });
+}
+
+// Senarai "watak suara" boleh pilih: gabungan suara + kadar + nada
+const VOICE_PRESETS = [
+  { id: 'auto',    name: '🗣️ Standard (BM)', rate: 1.0,  pitch: 1.0 },
+  { id: 'male',    name: '👨 Lelaki tegas',  rate: 0.95, pitch: 0.8 },
+  { id: 'female',  name: '👩 Perempuan',     rate: 1.0,  pitch: 1.15 },
+  { id: 'cute',    name: '🐱 Comel (kucing)', rate: 1.05, pitch: 1.6 },
+  { id: 'anime',   name: '✨ Anime',         rate: 1.1,  pitch: 1.8 },
+  { id: 'slow',    name: '🐢 Perlahan jelas', rate: 0.8,  pitch: 1.0 },
+];
+
 function speak(text) {
   if (!text) return;
   try {
@@ -1160,7 +1186,10 @@ function speak(text) {
     speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text);
     u.lang = 'ms-MY';
-    u.rate = 1.0;
+    // watak suara: kadar + nada ubah untuk kesan anime/kucing/dll
+    const preset = VOICE_PRESETS.find(p => p.id === (voicePrefs.preset || 'auto')) || VOICE_PRESETS[0];
+    u.rate = preset.rate;
+    u.pitch = preset.pitch;
     const voices = speechSynthesis.getVoices();
     const ms = voices.find(v => v.lang && v.lang.toLowerCase().startsWith('ms'));
     if (ms) u.voice = ms;
@@ -1225,6 +1254,38 @@ function setupButtons() {
       if (S.dest && S.userPos) fetchRoute(S.userPos, [S.dest.lng, S.dest.lat]);
     });
   });
+
+  // ---- Pemilih suara ----
+  $('voicebtn').addEventListener('click', () => { openVoiceModal(); $('quickmenu').classList.add('hidden'); });
+  $('voice-test').addEventListener('click', () => {
+    // uji suara dengan ayat sampel
+    const preset = VOICE_PRESETS.find(p => p.id === (voicePrefs.preset || 'auto')) || VOICE_PRESETS[0];
+    const saved = voicePrefs.preset;
+    speak('Belok kanan dalam dua ratus meter ke Jalan Tun Razak');
+    voicePrefs.preset = saved;
+  });
+  $('voice-close').addEventListener('click', () => $('voicemodal').classList.add('hidden'));
+}
+
+// Buka modal suara, senarai preset
+function openVoiceModal() {
+  const list = $('voice-list');
+  list.innerHTML = '';
+  VOICE_PRESETS.forEach(p => {
+    const div = document.createElement('div');
+    div.className = 'voice-item' + ((voicePrefs.preset || 'auto') === p.id ? ' active' : '');
+    div.textContent = p.name;
+    div.onclick = () => {
+      voicePrefs.preset = p.id;
+      localStorage.setItem('halaTuju.voice', JSON.stringify(voicePrefs));
+      document.querySelectorAll('.voice-item').forEach(el => el.classList.remove('active'));
+      div.classList.add('active');
+      // sebut nama watak segera sebagai pratonton
+      speak('Suara ' + p.name.replace(/[^\w\s]/g,''));
+    };
+    list.appendChild(div);
+  });
+  $('voicemodal').classList.remove('hidden');
 }
 
 // ---- Daftar service worker + mula ----
