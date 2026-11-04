@@ -161,7 +161,7 @@ function initMap() {
       if (Date.now() - lastMapInteraction >= 4500 && S.navigating) {
         followMode = true;
         // kekalkan bearing semasa, center ke lokasi
-        S.map.easeTo({ center: S.userPos, bearing: S.map.getBearing(), zoom: 17, pitch: 45, padding: { top: 90, bottom: 220, left: 60, right: 80 }, duration: 600 });
+        S.map.easeTo({ center: S.userPos, bearing: S.map.getBearing(), zoom: 17, pitch: 45, padding: { top: Math.round(window.innerHeight * 0.55), bottom: Math.round(window.innerHeight * 0.12), left: 60, right: 80 }, duration: 600 });
       }
     }, 5000);
   };
@@ -1022,7 +1022,7 @@ function startNavigation() {
   $('etabar').classList.remove('hidden');
   $('stopnav').classList.remove('hidden');
   followMode = true;
-  S.map.easeTo({ zoom: 17, pitch: 45, padding: { top: 90, bottom: 220, left: 60, right: 80 } });
+  S.map.easeTo({ zoom: 17, pitch: 45, padding: { top: Math.round(window.innerHeight * 0.55), bottom: Math.round(window.innerHeight * 0.12), left: 60, right: 80 } });
   S._lastStep = -1;
   updateNavigation();
 }
@@ -1144,15 +1144,19 @@ function checkSpeedLimit() {
 
 let followMode = true;
 let lastMapInteraction = 0;
-// Waze-style: anak panah di bahagian bawah skrin (bukan tengah), via padding atas besar
+// Waze-style: anak panah duduk ~68% ke bawah skrin.
+// Dalam MapLibre, padding.atas BESAR = center peta (anak panah) ditolak ke BAWAH.
 function followBearing(bearing) {
   if (!followMode) return;
+  const h = window.innerHeight;
+  const topPad = Math.round(h * 0.55);      // ruang atas = tolak anak panah ke bawah
+  const bottomPad = Math.round(h * 0.12);   // ruang kecil bawah
   S.map.easeTo({
     bearing,
     center: S.userPos,
     zoom: 17,
     pitch: 45,
-    padding: { top: 90, bottom: 220, left: 60, right: 80 },
+    padding: { top: topPad, bottom: bottomPad, left: 60, right: 80 },
     duration: 800,
   });
 }
