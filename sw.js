@@ -1,9 +1,10 @@
-const CACHE = 'hala-tuju-v24';
+const CACHE = 'hala-tuju-v25';
 const SHELL = [
   './index.html',
   './style.css',
   './app.js',
   './places-johor.js',
+  './rnr-johor.js',
   './manifest.json',
   './icon-192.png',
   './icon-512.png'
