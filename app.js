@@ -161,7 +161,7 @@ function initMap() {
       if (Date.now() - lastMapInteraction >= 4500 && S.navigating) {
         followMode = true;
         // kekalkan bearing semasa, center ke lokasi
-        S.map.easeTo({ center: S.userPos, bearing: S.map.getBearing(), zoom: 17, pitch: 45, padding: { top: Math.round(window.innerHeight * 0.55), bottom: Math.round(window.innerHeight * 0.12), left: 60, right: 80 }, duration: 600 });
+        S.map.easeTo({ center: S.userPos, bearing: S.map.getBearing(), zoom: 17, pitch: 45, padding: { top: Math.round(window.innerHeight * 0.50), bottom: Math.round(window.innerHeight * 0.20), left: 60, right: 80 }, duration: 600 });
       }
     }, 5000);
   };
@@ -1017,12 +1017,11 @@ function startNavigation() {
   $('searchbar').classList.add('hidden');
   $('fab-stack').classList.add('hidden');
   $('quickmenu').classList.add('hidden');
+  $('navbottom').classList.remove('hidden');
   $('speedbox').classList.remove('hidden');
   $('limitbox').classList.remove('hidden');
-  $('etabar').classList.remove('hidden');
-  $('stopnav').classList.remove('hidden');
   followMode = true;
-  S.map.easeTo({ zoom: 17, pitch: 45, padding: { top: Math.round(window.innerHeight * 0.55), bottom: Math.round(window.innerHeight * 0.12), left: 60, right: 80 } });
+  S.map.easeTo({ zoom: 17, pitch: 45, padding: { top: Math.round(window.innerHeight * 0.50), bottom: Math.round(window.innerHeight * 0.20), left: 60, right: 80 } });
   S._lastStep = -1;
   updateNavigation();
 }
@@ -1031,10 +1030,9 @@ function stopNavigation() {
   $('navbanner').classList.add('hidden');
   $('searchbar').classList.remove('hidden');
   $('fab-stack').classList.remove('hidden');
+  $('navbottom').classList.add('hidden');
   $('speedbox').classList.add('hidden');
   $('limitbox').classList.add('hidden');
-  $('etabar').classList.add('hidden');
-  $('stopnav').classList.add('hidden');
   $('poibar').classList.remove('hidden');
   const src = S.map.getSource('route');
   if (src) src.setData(emptyLine());
@@ -1149,8 +1147,8 @@ let lastMapInteraction = 0;
 function followBearing(bearing) {
   if (!followMode) return;
   const h = window.innerHeight;
-  const topPad = Math.round(h * 0.55);      // ruang atas = tolak anak panah ke bawah
-  const bottomPad = Math.round(h * 0.12);   // ruang kecil bawah
+  const topPad = Math.round(h * 0.50);      // ruang atas = tolak anak panah ke bawah
+  const bottomPad = Math.round(h * 0.20);   // ruang bawah (bar bawah navigasi)
   S.map.easeTo({
     bearing,
     center: S.userPos,

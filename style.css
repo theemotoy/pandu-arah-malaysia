@@ -163,7 +163,7 @@ button.danger { background:var(--danger); color:#fff; border:none; border-radius
 /* Dalam banner navigasi, butang Tamat jadi putih/merah */
 #navbanner button.danger { background:#fff; color:#d93025; }
 
-/* ===== Banner navigasi (gaya Waze: bar arahan slim atas) ===== */
+/* ===== Banner navigasi (atas) ===== */
 #navbanner { position:absolute; top:12px; left:12px; right:12px; z-index:7;
   background:rgba(32,33,36,.92); color:#fff; border-radius:14px;
   padding:12px 14px; box-shadow:var(--shadow-lg);
@@ -176,40 +176,39 @@ button.danger { background:var(--danger); color:#fff; border:none; border-radius
 #navinstruction { font-size:18px; font-weight:700; line-height:1.2; }
 #navdistance { font-size:13px; opacity:.85; margin-top:2px; }
 
-/* Kelajuan — bulatan besar terapung kanan bawah (gaya Waze) */
-#speedbox { position:absolute; right:14px; bottom:150px; z-index:7;
-  width:78px; height:78px; border-radius:50%;
-  background:rgba(32,33,36,.92); color:#fff; border:3px solid #fff;
-  display:flex; flex-direction:column; align-items:center; justify-content:center;
-  text-align:center; box-shadow:var(--shadow-md); }
-#speedbox.hidden { display:none; }
-#speedval { font-size:30px; font-weight:900; line-height:1; }
-#speedbox .unit { font-size:10px; opacity:.85; margin-top:1px; }
-#speedbox.over { background:#d93025; }
+/* ===== Bar bawah navigasi (satu bar bersatu: laju + ETA + Tamat) ===== */
+#navbottom { position:absolute; left:12px; right:12px; bottom:14px; z-index:7;
+  display:flex; align-items:center; gap:12px;
+  background:rgba(32,33,36,.92); color:#fff; border-radius:18px;
+  padding:10px 12px; box-shadow:var(--shadow-lg); }
+#navbottom.hidden { display:none; }
 
-/* Had laju — bulatan putih/merah terapung bawah speedbox */
-#limitbox { position:absolute; right:16px; bottom:108px; z-index:7;
-  width:46px; height:46px; border-radius:50%; background:#fff; color:#d93025;
-  border:3px solid #d93025; font-weight:900; font-size:17px;
-  display:flex; align-items:center; justify-content:center; box-shadow:var(--shadow-md); }
+/* Kluster kelajuan + had laju (kiri) */
+.speed-cluster { display:flex; flex-direction:column; align-items:center; gap:4px; flex:0 0 auto; }
+#speedbox { width:56px; height:56px; border-radius:50%;
+  background:rgba(255,255,255,.16); border:2.5px solid #fff;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  text-align:center; }
+#speedbox.hidden { display:none; }
+#speedval { font-size:24px; font-weight:900; line-height:1; }
+#speedbox .unit { font-size:9px; opacity:.8; margin-top:1px; }
+#speedbox.over { background:#d93025; }
+#limitbox { width:34px; height:34px; border-radius:50%; background:#fff; color:#d93025;
+  border:2.5px solid #d93025; font-weight:900; font-size:14px;
+  display:flex; align-items:center; justify-content:center; }
 #limitbox.hidden { display:none; }
 #limitbox span { font-weight:900; }
 
-/* Bar ETA terapung kiri bawah */
-#etabar { position:absolute; left:12px; bottom:16px; z-index:7;
-  background:rgba(32,33,36,.92); color:#fff; border-radius:12px;
-  padding:10px 14px; box-shadow:var(--shadow-md); min-width:120px; }
-#etabar.hidden { display:none; }
-#naveta { font-size:22px; font-weight:800; }
-#navremaining { font-size:13px; opacity:.85; margin-top:2px; }
-#etabar .ghost { margin-top:8px; width:100%; background:rgba(255,255,255,.16); color:#fff;
-  padding:9px; border-radius:10px; font-size:13px; }
+/* Kluster ETA (tengah, fleksibel) */
+.eta-cluster { flex:1; min-width:0; }
+#naveta { font-size:20px; font-weight:800; line-height:1.1; }
+#navremaining { font-size:12px; opacity:.85; margin-top:2px; }
 
-/* Butang Tamat terapung bawah-kanan */
-#stopnav { position:absolute; right:12px; bottom:14px; z-index:7;
-  background:#d93025; color:#fff; border:none; border-radius:12px;
-  padding:12px 20px; font-size:14px; font-weight:700; box-shadow:var(--shadow-md); }
-#stopnav.hidden { display:none; }
+/* Butang dalam bar bawah */
+#navbottom .ghost { flex:0 0 auto; background:rgba(255,255,255,.16); color:#fff;
+  border:none; border-radius:12px; padding:10px 14px; font-size:13px; cursor:pointer; }
+#navbottom .danger { flex:0 0 auto; background:#d93025; color:#fff; border:none;
+  border-radius:12px; padding:10px 16px; font-size:14px; font-weight:700; cursor:pointer; }
 
 /* ===== Toast ===== */
 #toast { position:absolute; bottom:90px; left:50%; transform:translateX(-50%);
@@ -254,4 +253,5 @@ button.danger { background:var(--danger); color:#fff; border:none; border-radius
 .maplibregl-ctrl-bottom-left { margin: 0 0 12px 12px !important; }
 .maplibregl-ctrl-bottom-right { margin: 0 12px 12px 0 !important; }
 
-.hidden { display:none; }
+.hidden { display:none !important; }
+#searchbar.hidden { display:none !important; }

@@ -12,7 +12,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
-<link href="style.css?v=26" rel="stylesheet">
+<link href="style.css?v=27" rel="stylesheet">
 </head>
 <body>
 <div id="map"></div>
@@ -151,7 +151,7 @@
   </div>
 </div>
 
-<!-- ===== Banner navigasi aktif (gaya Waze: bar arahan slim atas) ===== -->
+<!-- ===== Banner navigasi aktif (atas) ===== -->
 <div id="navbanner" class="hidden">
   <div id="navmaneuver" class="maneuver-icon"></div>
   <div class="nav-text">
@@ -160,25 +160,25 @@
   </div>
 </div>
 
-<!-- Kelajuan + had laju terapung kanan bawah -->
-<div id="speedbox" class="hidden"><span id="speedval">0</span><span class="unit">km/j</span></div>
-<div id="limitbox" class="hidden"><span id="limitval">—</span></div>
-
-<!-- Bar ETA terapung kiri bawah -->
-<div id="etabar" class="hidden">
-  <div id="naveta">—</div>
-  <div id="navremaining">—</div>
+<!-- ===== Bar bawah navigasi (satu bar bersih: laju + ETA + Tamat) ===== -->
+<div id="navbottom" class="hidden">
+  <div class="speed-cluster">
+    <div id="speedbox"><span id="speedval">0</span><span class="unit">km/j</span></div>
+    <div id="limitbox"><span id="limitval">—</span></div>
+  </div>
+  <div class="eta-cluster">
+    <div id="naveta">—</div>
+    <div id="navremaining">—</div>
+  </div>
   <button id="recenter" class="ghost">Pusat</button>
+  <button id="stopnav" class="danger">Tamat</button>
 </div>
-
-<!-- Butang Tamat terapung -->
-<button id="stopnav" class="danger hidden">Tamat</button>
 
 <div id="toast"></div>
 <div id="copyright">HalaTuju © 2026 Ashraf</div>
 
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-<script src="places-johor.js?v=25"></script>
-<script src="app.js?v=26"></script>
+<script src="places-johor.js?v=27"></script>
+<script src="app.js?v=27"></script>
 </body>
 </html>
