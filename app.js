@@ -14,6 +14,8 @@ const S = {
   addStopMode: false,     // bila true, hasil carian jadi hentian (bukan destinasi)
   trafficSegments: [],    // data trafik semasa untuk warna laluan
   speedCameras: [],       // kamera had laju berdekatan (untuk amaran)
+  darkStyle: 'dark',      // 'dark' atau 'fiord' (mod malam)
+  buildings3D: true,      // bangunan 3D semasa navigasi
   route: null,            // laluan dipilih {shape, steps, distance, duration}
   allRoutes: [],          // semua laluan (utama + alternatif)
   steps: [],
@@ -123,10 +125,16 @@ function maneuverSVG(dir) {
 }
 
 // ---- Inisialisasi peta ----
+// Gaya peta: liberty (siang), dark/fiord (malam), bright (siang terang).
+function mapStyleURL() {
+  if (S.darkMode) return S.darkStyle === 'fiord'
+    ? 'https://tiles.openfreemap.org/styles/fiord'
+    : 'https://tiles.openfreemap.org/styles/dark';
+  return 'https://tiles.openfreemap.org/styles/liberty';
+}
+
 function initMap() {
-  const style = S.darkMode
-    ? 'https://tiles.openfreemap.org/styles/dark'
-    : 'https://tiles.openfreemap.org/styles/liberty';
+  const style = mapStyleURL();
   S.map = new maplibregl.Map({
     container: 'map',
     style: style,
@@ -213,20 +221,22 @@ function addRouteLayers() {
       paint: { 'circle-radius': 18, 'circle-opacity': 0.35, 'circle-color': ['get', 'color'] },
     });
   }
+
+  // Bangunan 3D (tambah semula selepas style berubah)
+  addBuilding3DLayer();
 }
 
 // ---- Mod malam ----
 function toggleDark() {
   S.darkMode = !S.darkMode;
   localStorage.setItem('halaTuju.dark', S.darkMode ? '1' : '0');
-  const style = S.darkMode
-    ? 'https://tiles.openfreemap.org/styles/dark'
-    : 'https://tiles.openfreemap.org/styles/liberty';
+  const style = mapStyleURL();
   // setStyle buang semua source/layer. Guna callback diffs untuk pasti
   // style betul-betul siap sebelum tambah semula lapisan laluan.
   const onStyleLoaded = () => {
     // tunggu sehingga style sebenar siap (idle) — lebih andal dari 'style.load'
     addRouteLayers();
+    addBuilding3DLayer();
   };
   S.map.setStyle(style, { diff: false });
   S.map.once('styledata', () => {
@@ -236,6 +246,30 @@ function toggleDark() {
     } else {
       S.map.once('idle', onStyleLoaded);
     }
+  });
+}
+
+// ---- Bangunan 3D (dramatik semasa navigasi) ----
+// OpenFreeMap liberty dah ada 'building-3d' tapi halus. Tambah lapisan
+// sendiri dengan warna lebih jelas & ketinggian lebih tinggi.
+function addBuilding3DLayer() {
+  if (!S.buildings3D) return;
+  // Guna sumber 'openmaptiles' yang dah ada dalam style liberty/dark
+  const srcName = 'openmaptiles';
+  if (!S.map.getSource(srcName)) return;
+  if (S.map.getLayer('building-3d-custom')) S.map.removeLayer('building-3d-custom');
+  S.map.addLayer({
+    id: 'building-3d-custom',
+    type: 'fill-extrusion',
+    source: srcName,
+    'source-layer': 'building',
+    minzoom: 14,
+    paint: {
+      'fill-extrusion-color': S.darkMode ? '#3a3f4a' : '#e3e1dc',
+      'fill-extrusion-height': ['*', ['get', 'render_height'], 1.4],
+      'fill-extrusion-base': ['get', 'render_min_height'],
+      'fill-extrusion-opacity': S.darkMode ? 0.85 : 0.9,
+    },
   });
 }
 
@@ -1537,14 +1571,18 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-// pulih mod malam
+// pulih mod malam + gaya peta + 3D
 S.darkMode = localStorage.getItem('halaTuju.dark') === '1';
+S.darkStyle = localStorage.getItem('halaTuju.darkStyle') || 'dark';
+S.buildings3D = localStorage.getItem('halaTuju.buildings3D') !== '0';
 
 initMap();
 setupSearch();
 setupVoiceSearch();
 setupAddPlace();
 setupButtons();
+setupMapOptions();
+setupRnR();
 renderFavs();
 renderHistory();
 setupStats();
@@ -1579,4 +1617,79 @@ function setupStats() {
   $('statsmodal').addEventListener('click', e => {
     if (e.target === $('statsmodal')) $('statsmodal').classList.add('hidden');
   });
+}
+
+// ---- Pilihan peta (style + 3D) ----
+function setupMapOptions() {
+  $('mapbtn').addEventListener('click', () => {
+    $('mapmodal').classList.remove('hidden');
+    $('quickmenu').classList.add('hidden');
+  });
+  $('map-close').addEventListener('click', () => $('mapmodal').classList.add('hidden'));
+  document.querySelectorAll('.map-opt').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const mode = btn.dataset.mode;
+      if (mode === 'night') { S.darkMode = true; S.darkStyle = 'dark'; }
+      else if (mode === 'fiord') { S.darkMode = true; S.darkStyle = 'fiord'; }
+      else if (mode === 'day') { S.darkMode = false; }
+      else if (mode === '3d') { S.buildings3D = !S.buildings3D; }
+      localStorage.setItem('halaTuju.dark', S.darkMode ? '1' : '0');
+      localStorage.setItem('halaTuju.darkStyle', S.darkStyle);
+      localStorage.setItem('halaTuju.buildings3D', S.buildings3D ? '1' : '0');
+      applyMapStyle();
+      $('mapmodal').classList.add('hidden');
+      toast('Peta dikemaskini');
+    });
+  });
+}
+
+function applyMapStyle() {
+  const style = mapStyleURL();
+  const onLoaded = () => { addRouteLayers(); addBuilding3DLayer(); };
+  S.map.setStyle(style, { diff: false });
+  S.map.once('styledata', () => {
+    if (S.map.isStyleLoaded()) onLoaded();
+    else S.map.once('idle', onLoaded);
+  });
+}
+
+// ---- R&R / Tol (gaya TuJu) ----
+let rnrVisible = false;
+let rnrMarkers = [];
+function setupRnR() {
+  $('rnrbtn').addEventListener('click', () => {
+    $('quickmenu').classList.add('hidden');
+    toggleRnR();
+  });
+}
+function toggleRnR() {
+  rnrVisible = !rnrVisible;
+  if (rnrVisible) showRnR();
+  else hideRnR();
+}
+function showRnR() {
+  const all = [
+    ...(typeof RNR_PLACES !== 'undefined' ? RNR_PLACES : []).map(p => ({ ...p, kind: 'rnr' })),
+    ...(typeof TOLL_PLAZAS !== 'undefined' ? TOLL_PLAZAS : []).map(p => ({ ...p, kind: 'toll' })),
+  ];
+  rnrMarkers = all.map(p => {
+    const el = document.createElement('div');
+    el.className = 'rnr-marker';
+    el.textContent = p.kind === 'rnr' ? '🍔' : '🚧';
+    el.title = p.name;
+    return new maplibregl.Marker({ element: el }).setLngLat([p.lng, p.lat]).addTo(S.map);
+  });
+  // Fokus ke R&R terdekat (jika ada)
+  if (S.userPos && all.length) {
+    const [lng, lat] = S.userPos;
+    let best = all[0], bd = Infinity;
+    all.forEach(p => { const d = haversine(lat, lng, p.lat, p.lng); if (d < bd) { bd = d; best = p; } });
+    S.map.easeTo({ center: [best.lng, best.lat], zoom: 9 });
+  }
+  toast('R&R & tol dipaparkan (' + all.length + ' lokasi)');
+}
+function hideRnR() {
+  rnrMarkers.forEach(m => m.remove());
+  rnrMarkers = [];
+  toast('R&R & tol disembunyikan');
 }
