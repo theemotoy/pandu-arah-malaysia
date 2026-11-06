@@ -12,7 +12,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
-<link href="style.css?v=27" rel="stylesheet">
+<link href="style.css?v=28" rel="stylesheet">
 </head>
 <body>
 <div id="map"></div>
@@ -131,6 +131,7 @@
     </button>
   </div>
   <div class="sheet-body" id="sheetbody">
+    <div id="stopsbar"></div>
     <div id="alternates"></div>
     <div id="routeopts">
       <label class="opt"><input type="radio" name="mode" value="fastest" checked> Paling pantas</label>
@@ -144,6 +145,7 @@
       <button class="travel" data-travel="bicycle"><svg viewBox="0 0 24 24"><path d="M15.5 5.5c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zM5 12c-2.8 0-5 2.2-5 5s2.2 5 5 5 5-2.2 5-5-2.2-5-5-5zm0 8.5c-1.9 0-3.5-1.6-3.5-3.5s1.6-3.5 3.5-3.5 3.5 1.6 3.5 3.5-1.6 3.5-3.5 3.5zm5.8-10l2.4-2.4.8.8c1.3 1.3 3 2.1 5.1 2.1V9c-1.5 0-2.7-.6-3.6-1.5l-1.9-1.9c-.5-.4-1-.6-1.6-.6s-1.1.2-1.4.6L7.8 8.4c-.4.4-.6.9-.6 1.4 0 .6.2 1.1.6 1.4L11 14v5h2v-6.2l-2.2-2.3zM19 12c-2.8 0-5 2.2-5 5s2.2 5 5 5 5-2.2 5-5-2.2-5-5-5zm0 8.5c-1.9 0-3.5-1.6-3.5-3.5s1.6-3.5 3.5-3.5 3.5 1.6 3.5 3.5-1.6 3.5-3.5 3.5z"/></svg> Basikal</button>
     </div>
     <div class="row">
+      <button id="addstopbtn" class="ghost">+ Hentian</button>
       <button id="savefav" class="ghost">Simpan</button>
       <button id="gobtn" class="primary">Mula Pandu Arah</button>
       <button id="cancelroute" class="ghost">Batal</button>
@@ -172,13 +174,33 @@
   </div>
   <button id="recenter" class="ghost">Pusat</button>
   <button id="stopnav" class="danger">Tamat</button>
+  <button id="reportbtn" title="Lapor insiden">
+    <svg viewBox="0 0 24 24"><path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1s-2.4.84-2.82 2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm-2 14-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg>
+  </button>
+</div>
+
+<!-- ===== Modal lapor insiden ===== -->
+<div id="reportmodal" class="hidden">
+  <div class="modal-box">
+    <div class="modal-title">Lapor Insiden</div>
+    <div class="modal-sub">Pilih jenis insiden untuk kongsikan kepada pemandu lain</div>
+    <div id="report-grid">
+      <button class="report-opt" data-type="accident"><span class="ro-ic">💥</span><span>Kemalangan</span></button>
+      <button class="report-opt" data-type="jam"><span class="ro-ic">🚗</span><span>Jam</span></button>
+      <button class="report-opt" data-type="hazard"><span class="ro-ic">⚠️</span><span>Bahaya</span></button>
+      <button class="report-opt" data-type="police"><span class="ro-ic">🚔</span><span>Polis</span></button>
+    </div>
+    <div class="modal-actions">
+      <button id="report-cancel" class="ghost">Batal</button>
+    </div>
+  </div>
 </div>
 
 <div id="toast"></div>
 <div id="copyright">HalaTuju © 2026 Ashraf</div>
 
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-<script src="places-johor.js?v=27"></script>
-<script src="app.js?v=27"></script>
+<script src="places-johor.js?v=28"></script>
+<script src="app.js?v=28"></script>
 </body>
 </html>

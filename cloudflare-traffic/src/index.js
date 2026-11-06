@@ -29,7 +29,17 @@ export default {
       return handleTraffic(request, env);
     }
 
-    return json({ ok: true, name: 'HalaTuju Traffic', endpoints: ['/report', '/traffic'] });
+    // Endpoint 3: lapor insiden (kemalangan/jam/rosak/polisi)
+    if (url.pathname === '/incident' && request.method === 'POST') {
+      return handleIncident(request, env);
+    }
+
+    // Endpoint 4: tarik insiden sekitar
+    if (url.pathname === '/incidents' && request.method === 'GET') {
+      return handleIncidents(request, env);
+    }
+
+    return json({ ok: true, name: 'HalaTuju Traffic', endpoints: ['/report', '/traffic', '/incident', '/incidents'] });
   },
 };
 
@@ -104,6 +114,50 @@ function speedLevel(speed) {
   if (speed >= 60) return 'green';    // lancar
   if (speed >= 30) return 'yellow';   // sederhana
   return 'red';                       // sesak / berhenti
+}
+
+// Lapor insiden (kemalangan/jam/rosak/polisi)
+async function handleIncident(request, env) {
+  try {
+    const { lat, lng, type } = await request.json();
+    if (lat == null || lng == null || !type) {
+      return json({ error: 'Perlu lat, lng & type' }, 400);
+    }
+    const allowed = ['accident', 'jam', 'hazard', 'police'];
+    if (!allowed.includes(type)) {
+      return json({ error: 'Jenis insiden tidak sah' }, 400);
+    }
+    const now = Math.floor(Date.now() / 1000);
+    await env.DB.prepare(
+      'INSERT INTO incidents (lat, lng, type, ts) VALUES (?, ?, ?, ?)'
+    ).bind(lat, lng, type, now).run();
+    // Bersihkan insiden lama (30 minit)
+    await env.DB.prepare('DELETE FROM incidents WHERE ts < ?').bind(now - 1800).run();
+    return json({ ok: true });
+  } catch (e) {
+    return json({ error: 'Ralat incident: ' + (e.message || e) }, 500);
+  }
+}
+
+async function handleIncidents(request, env) {
+  try {
+    const url = new URL(request.url);
+    const minLat = parseFloat(url.searchParams.get('minLat'));
+    const maxLat = parseFloat(url.searchParams.get('maxLat'));
+    const minLng = parseFloat(url.searchParams.get('minLng'));
+    const maxLng = parseFloat(url.searchParams.get('maxLng'));
+    if ([minLat, maxLat, minLng, maxLng].some(isNaN)) {
+      return json({ error: 'Perlu bbox' }, 400);
+    }
+    const now = Math.floor(Date.now() / 1000);
+    const cutoff = now - 1800; // 30 minit
+    const { results } = await env.DB.prepare(
+      'SELECT lat, lng, type, ts FROM incidents WHERE ts >= ? AND lat >= ? AND lat <= ? AND lng >= ? AND lng <= ?'
+    ).bind(cutoff, minLat, maxLat, minLng, maxLng).run();
+    return json({ ok: true, incidents: results || [] });
+  } catch (e) {
+    return json({ error: 'Ralat incidents: ' + (e.message || e) }, 500);
+  }
 }
 
 function clamp(v, min, max) {

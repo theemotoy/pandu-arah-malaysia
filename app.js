@@ -10,6 +10,8 @@ const S = {
   speed: 0,               // km/j
   watchId: null,
   dest: null,             // {lng, lat, name}
+  stops: [],              // hentian tambahan (multi-stop) [{lng,lat,name}]
+  addStopMode: false,     // bila true, hasil carian jadi hentian (bukan destinasi)
   route: null,            // laluan dipilih {shape, steps, distance, duration}
   allRoutes: [],          // semua laluan (utama + alternatif)
   steps: [],
@@ -309,6 +311,59 @@ function drawTraffic(segments) {
   S.map.getSource('traffic').setData({ type: 'FeatureCollection', features });
 }
 
+// ---- Lapor insiden (kemalangan/jam/bahaya/polis) ----
+const INCIDENT_ICONS = {
+  accident: '💥', jam: '🚗', hazard: '⚠️', police: '🚔',
+};
+function openReportModal() {
+  $('reportmodal').classList.remove('hidden');
+}
+function reportIncident(type) {
+  if (!S.userPos) { toast('Lokasi belum dikesan'); return; }
+  const [lng, lat] = S.userPos;
+  fetch(TRAFFIC_ENDPOINT + '/incident', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ lat, lng, type }),
+  }).then(r => r.json()).then(d => {
+    if (d.ok) {
+      toast('✅ Insiden dilaporkan — terima kasih!');
+      $('reportmodal').classList.add('hidden');
+      fetchIncidents(); // papar segera di peta
+    } else {
+      toast('❌ ' + (d.error || 'Gagal melapor'));
+    }
+  }).catch(() => toast('❌ Gagal melapor'));
+}
+
+// Tarik & papar insiden sekitar di peta (marker emoji)
+function fetchIncidents() {
+  if (!S.userPos) return;
+  const [lng, lat] = S.userPos;
+  const d = 0.08;
+  const url = `${TRAFFIC_ENDPOINT}/incidents?minLat=${lat-d}&maxLat=${lat+d}&minLng=${lng-d}&maxLng=${lng+d}`;
+  fetch(url).then(r => r.json()).then(data => {
+    if (!data.ok) return;
+    drawIncidents(data.incidents || []);
+  }).catch(() => {});
+}
+
+function drawIncidents(incidents) {
+  // buang marker lama
+  if (S.incidentMarkers) { S.incidentMarkers.forEach(m => m.remove()); }
+  S.incidentMarkers = [];
+  incidents.forEach(inc => {
+    const el = document.createElement('div');
+    el.className = 'incident-marker';
+    el.textContent = INCIDENT_ICONS[inc.type] || '⚠️';
+    el.style.fontSize = '22px';
+    el.style.filter = 'drop-shadow(0 1px 2px rgba(0,0,0,.4))';
+    const m = new maplibregl.Marker({ element: el })
+      .setLngLat([inc.lng, inc.lat]).addTo(S.map);
+    S.incidentMarkers.push(m);
+  });
+}
+
 // ---- Carian tempat (Nominatim) ----
 let searchTimer;
 function setupSearch() {
@@ -532,7 +587,14 @@ function renderResults(rs) {
     div.innerHTML = `<div class="name">${escapeHtml(r.display_name.split(',')[0])}</div>
                      <div class="sub">${escapeHtml(sub)}</div>`;
     div.onclick = () => {
-      setDestination(parseFloat(r.lon), parseFloat(r.lat), r.display_name.split(',')[0]);
+      const lng = parseFloat(r.lon), lat = parseFloat(r.lat), nm = r.display_name.split(',')[0];
+      if (S.addStopMode && S.dest) {
+        addStop(lng, lat, nm);
+        S.addStopMode = false;
+        toast('+ Hentian: ' + nm);
+      } else {
+        setDestination(lng, lat, nm);
+      }
       res.classList.remove('show'); $('q').value = ''; $('clear').style.display='none';
     };
     res.appendChild(div);
@@ -881,6 +943,35 @@ function setDestination(lng, lat, name) {
   }
   if (!S.userPos) { toast('Lokasi belum dikesan. Tunggu isyarat GPS…'); return; }
   fetchRoute(S.userPos, [lng, lat]);
+  renderStops();
+}
+
+// ---- Multi-stop: papar & urus hentian ----
+function renderStops() {
+  const bar = $('stopsbar');
+  if (!bar) return;
+  bar.innerHTML = '';
+  if (!S.stops.length) { bar.classList.add('hidden'); return; }
+  bar.classList.remove('hidden');
+  S.stops.forEach((st, i) => {
+    const chip = document.createElement('div');
+    chip.className = 'stop-chip';
+    chip.innerHTML = `<span class="stop-num">${i+1}</span><span class="stop-name">${escapeHtml(st.name || 'Hentian')}</span><button class="stop-del" data-i="${i}">×</button>`;
+    chip.querySelector('.stop-del').onclick = () => {
+      S.stops.splice(i, 1);
+      renderStops();
+      if (S.dest && S.userPos) fetchRoute(S.userPos, [S.dest.lng, S.dest.lat]);
+    };
+    bar.appendChild(chip);
+  });
+}
+
+// Tambah hentian: pengguna cari destinasi seterusnya (masuk sebagai hentian)
+function addStop(lng, lat, name) {
+  S.stops.push({ lng, lat, name });
+  renderStops();
+  if (S.dest && S.userPos) fetchRoute(S.userPos, [S.dest.lng, S.dest.lat]);
+  else toast('Tetapkan destinasi akhir dulu');
 }
 
 // ---- Baca pilihan routing dari UI ----
@@ -895,7 +986,7 @@ function getRouteOptions() {
   };
 }
 
-// ---- Fetch route (Valhalla) ----
+// ---- Fetch route (Valhalla) — sokong multi-stop (waypoints) ----
 async function fetchRoute(from, to) {
   const opts = getRouteOptions();
   // pemetaan mod perjalanan -> costing Valhalla
@@ -911,8 +1002,13 @@ async function fetchRoute(from, to) {
     if (opts.avoidHighway) costOpts.use_highways = 0.0;
   }
 
+  // Bina senarai lokasi: asal -> hentian (ikut turutan) -> destinasi
+  const locations = [{ lat: from[1], lon: from[0] }];
+  S.stops.forEach(st => locations.push({ lat: st.lat, lon: st.lng }));
+  locations.push({ lat: to[1], lon: to[0] });
+
   const body = {
-    locations: [{ lat: from[1], lon: from[0] }, { lat: to[1], lon: to[0] }],
+    locations: locations,
     costing: costing,
     costing_options: { [costing]: costOpts },
     directions_options: { units: 'kilometers' },
@@ -1037,7 +1133,8 @@ function stopNavigation() {
   const src = S.map.getSource('route');
   if (src) src.setData(emptyLine());
   if (S.destinationMarker) { S.destinationMarker.remove(); S.destinationMarker=null; }
-  S.dest = null; S.route = null; S.steps = []; S.allRoutes = [];
+  S.dest = null; S.route = null; S.steps = []; S.allRoutes = []; S.stops = []; S.addStopMode = false;
+  renderStops();
   speak('');
   toast('Pandu arah ditamatkan');
 }
@@ -1257,6 +1354,22 @@ function setupButtons() {
     });
   });
 
+  // ---- Lapor insiden ----
+  $('reportbtn').addEventListener('click', openReportModal);
+  $('report-cancel').addEventListener('click', () => $('reportmodal').classList.add('hidden'));
+  document.querySelectorAll('.report-opt').forEach(btn => {
+    btn.addEventListener('click', () => reportIncident(btn.dataset.type));
+  });
+
+  // ---- Tambah hentian (multi-stop) ----
+  $('addstopbtn').addEventListener('click', () => {
+    if (!S.dest) { toast('Tetapkan destinasi akhir dulu'); return; }
+    S.addStopMode = true;
+    $('routepanel').classList.add('collapsed');
+    $('q').focus();
+    toast('Cari hentian seterusnya…');
+  });
+
   // ---- Pemilih suara ----
   $('voicebtn').addEventListener('click', () => { openVoiceModal(); $('quickmenu').classList.add('hidden'); });
   $('voice-test').addEventListener('click', () => {
@@ -1322,9 +1435,9 @@ renderFavs();
 renderHistory();
 setupStats();
 
-// Tarik trafik sekitar setiap 30 saat (sekali lokasi dah sedia)
+// Tarik trafik & insiden sekitar setiap 30 saat (sekali lokasi dah sedia)
 setInterval(() => {
-  if (S.userPos) fetchTraffic();
+  if (S.userPos) { fetchTraffic(); fetchIncidents(); }
 }, 30000);
 
 // ---- Statistik (panel 📊) ----
