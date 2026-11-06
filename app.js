@@ -12,6 +12,8 @@ const S = {
   dest: null,             // {lng, lat, name}
   stops: [],              // hentian tambahan (multi-stop) [{lng,lat,name}]
   addStopMode: false,     // bila true, hasil carian jadi hentian (bukan destinasi)
+  trafficSegments: [],    // data trafik semasa untuk warna laluan
+  speedCameras: [],       // kamera had laju berdekatan (untuk amaran)
   route: null,            // laluan dipilih {shape, steps, distance, duration}
   allRoutes: [],          // semua laluan (utama + alternatif)
   steps: [],
@@ -197,9 +199,11 @@ function addRouteLayers() {
   S.map.addLayer({ id:'route-casing', type:'line', source:'route',
     layout:{'line-join':'round','line-cap':'round'},
     paint:{'line-color':'#ffffff','line-width':11} });
+  // Warna laluan dinamik: guna 'traffic-color' property (hijau/kuning/merah)
+  // bila trafik tersedia; jika tiada, guna ungu lalai.
   S.map.addLayer({ id:'route-line', type:'line', source:'route',
     layout:{'line-join':'round','line-cap':'round'},
-    paint:{'line-color':'#713cc7','line-width':7} });
+    paint:{'line-color':['coalesce',['get','traffic-color'],'#713cc7'],'line-width':7} });
 
   // Sumber trafik (bulatan warna) — tambah semula selepas style berubah
   if (!S.map.getSource('traffic')) {
@@ -261,6 +265,8 @@ function onPosition(pos) {
     updateNavigation();
     updateSpeedDisplay();
     checkSpeedLimit();
+    checkSpeedCameras();
+    warnSpeedCameras();
     reportTraffic();
   }
 }
@@ -301,6 +307,8 @@ function fetchTraffic() {
 }
 
 function drawTraffic(segments) {
+  // Simpan untuk warna laluan
+  S.trafficSegments = segments;
   // sumber 'traffic' sudah ditambah dalam addRouteLayers()
   if (!S.map.getSource('traffic')) return;
   const features = segments.map(s => ({
@@ -309,6 +317,11 @@ function drawTraffic(segments) {
     properties: { color: s.level === 'red' ? '#e53935' : s.level === 'yellow' ? '#f9a825' : '#43a047' },
   }));
   S.map.getSource('traffic').setData({ type: 'FeatureCollection', features });
+  // Warnakan semula laluan sedia ada dengan trafik baharu
+  if (S.route) {
+    const src = S.map.getSource('route');
+    if (src) src.setData(shapeToGeoJSONColored(S.route.shape));
+  }
 }
 
 // ---- Lapor insiden (kemalangan/jam/bahaya/polis) ----
@@ -1063,12 +1076,46 @@ function parseTrip(trip) {
 
 function drawRoute(route) {
   const src = S.map.getSource('route');
-  if (src) src.setData(shapeToGeoJSON(route.shape));
+  if (src) src.setData(shapeToGeoJSONColored(route.shape));
   // Semasa navigasi, jangan fitBounds (akan zoom keluar dari anak panah)
   if (S.navigating) return;
   const bounds = route.shape.reduce((b,c)=>b.extend(c),
     new maplibregl.LngLatBounds(route.shape[0], route.shape[0]));
   S.map.fitBounds(bounds, { padding: 80 });
+}
+
+// Bentuk laluan kepada GeoJSON dengan warna trafik per segmen.
+// Bagi setiap titik, semak tahap kesesakan berdekatan (dari S.trafficSegments).
+function shapeToGeoJSONColored(shape) {
+  const colors = { green:'#43a047', yellow:'#f9a825', red:'#e53935' };
+  const feats = [];
+  // Pecahkan shape kepada segmen kecil, warnakan ikut trafik terdekat
+  let cur = []; let curColor = null;
+  shape.forEach(pt => {
+    const level = trafficLevelAt(pt);
+    const c = level ? colors[level] : null;
+    if (curColor === c) {
+      cur.push(pt);
+    } else {
+      if (cur.length) feats.push({ type:'Feature', geometry:{ type:'LineString', coordinates: cur }, properties: c ? { 'traffic-color': c } : {} });
+      cur = [pt]; curColor = c;
+    }
+  });
+  if (cur.length) feats.push({ type:'Feature', geometry:{ type:'LineString', coordinates: cur }, properties: curColor ? { 'traffic-color': curColor } : {} });
+  return { type:'FeatureCollection', features: feats };
+}
+
+// Tahap trafik pada titik (cari segmen trafik terdekat dalam ~500m)
+let _trafficCache = { data: [], t: 0 };
+function trafficLevelAt(pt) {
+  const segs = S.trafficSegments || [];
+  if (!segs.length) return null;
+  let best = null, bestD = 0.005; // ~500m
+  segs.forEach(s => {
+    const d = Math.abs(s.lat - pt[1]) + Math.abs(s.lng - pt[0]);
+    if (d < bestD) { bestD = d; best = s; }
+  });
+  return best ? best.level : null;
 }
 
 function showRouteSummary() {
@@ -1203,7 +1250,22 @@ function etaText(remainingM) {
   const speed = S.speed > 5 ? S.speed : 40; // km/j
   const remainSec = remainingM / (speed*1000/3600);
   const arr = new Date(Date.now() + remainSec*1000);
-  return 'Tiba ' + arr.toLocaleTimeString('ms-MY', {hour:'2-digit', minute:'2-digit'});
+  return 'Tiba ' + formatTimeBM(arr);
+}
+
+// Format masa Bahasa Melayu yang betul (beza pagi/tengah hari/petang/malam):
+// 00:00–11:59 → pagi (PG); 12:00–13:59 → tengah hari (TGH);
+// 14:00–18:59 → petang (PTG); 19:00–23:59 → malam (MLM).
+function formatTimeBM(d) {
+  let h = d.getHours(), m = d.getMinutes();
+  let label;
+  if (h < 12) label = 'pagi';
+  else if (h < 14) label = 'tengah hari';
+  else if (h < 19) label = 'petang';
+  else label = 'malam';
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  const mm = String(m).padStart(2, '0');
+  return `${h12}:${mm} ${label}`;
 }
 
 // ---- Paparan kelajuan ----
@@ -1235,6 +1297,58 @@ function checkSpeedLimit() {
       $('limitbox').classList.remove('hidden');
     })
     .catch(() => { /* senyap - had laju optional */ });
+}
+
+// ---- Kamera had laju (amaran) ----
+// Tarik kamera dalam radius ~2km & amaran bila menghampiri (dalam 300m).
+let lastCameraCheck = 0;
+const OVERPASS_SERVERS = [
+  'https://overpass-api.de/api/interpreter',
+  'https://overpass.kumi.systems/api/interpreter',
+  'https://overpass.private.coffee/api/interpreter',
+];
+function checkSpeedCameras() {
+  if (!S.userPos || !S.navigating) return;
+  if (Date.now() - lastCameraCheck < 30000) return;
+  lastCameraCheck = Date.now();
+  const [lng, lat] = S.userPos;
+  // OSM tag: highway=speed_camera (nod)
+  const q = `[out:json][timeout:10];node(around:2000,${lat},${lng})["highway"="speed_camera"];out;`;
+  queryOverpass(q, (elements) => {
+    S.speedCameras = (elements || []).map(e => [e.lat, e.lon]);
+  });
+}
+
+// Cuba beberapa server Overpass (public server kadang sibuk/timeout)
+function queryOverpass(query, cb) {
+  let idx = 0;
+  const tryNext = () => {
+    if (idx >= OVERPASS_SERVERS.length) { cb([]); return; }
+    const server = OVERPASS_SERVERS[idx++];
+    fetch(server, {
+      method:'POST', headers:{ 'User-Agent':'HalaTuju/1.0' },
+      body: 'data=' + encodeURIComponent(query),
+    })
+      .then(r => r.json())
+      .then(d => cb(d.elements || []))
+      .catch(tryNext);
+  };
+  tryNext();
+}
+
+// Semak jarak ke kamera terdekat; amaran + suara bila <300m
+function warnSpeedCameras() {
+  if (!S.navigating || !S.userPos || !S.speedCameras.length) return;
+  const [lng, lat] = S.userPos;
+  for (const cam of S.speedCameras) {
+    const d = haversine(lat, lng, cam[0], cam[1]);
+    if (d < 300 && Date.now() - (S._lastCamWarn || 0) > 20000) {
+      S._lastCamWarn = Date.now();
+      speak('Awas, kamera had laju di hadapan');
+      toast('📸 Kamera had laju di hadapan');
+      return;
+    }
+  }
 }
 
 let followMode = true;

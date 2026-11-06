@@ -1,4 +1,4 @@
-const CACHE = 'hala-tuju-v21';
+const CACHE = 'hala-tuju-v23';
 const SHELL = [
   './index.html',
   './style.css',
@@ -9,13 +9,16 @@ const SHELL = [
   './icon-512.png'
 ];
 
+// Cache berasingan untuk data peta (tiles) — besar & berubah, dibersihkan kerap
+const MAP_CACHE = 'hala-tuju-map-v1';
+
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', e => {
   e.waitUntil(caches.keys().then(keys =>
-    Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
+    Promise.all(keys.filter(k => k !== CACHE && k !== MAP_CACHE).map(k => caches.delete(k)))
   ).then(() => self.clients.claim()));
 });
 
@@ -25,25 +28,60 @@ self.addEventListener('message', e => {
 });
 
 self.addEventListener('controllerchange', () => {
-  // bila service worker baru ambil alih, muat semula supaya pengguna nampak versi terkini
   if (self.registration) self.registration.update();
 });
 
-// Network-first: sentiasa cuba dapatkan versi terkini, guna cache hanya bila offline.
-// Ini memastikan pengguna sentiasa dapat kemas kini terkini, bukan versi lama.
+// Strategi cache:
+// 1) Aset statik (HTML/CSS/JS) → network-first (sentiasa versi terkini, cache bila offline)
+// 2) Tiles peta (openfreemap) → cache-first + latar belakang kemaskini (offline peta)
+// 3) API luaran (routing/trafik/nominatim) → network-first, cache sebagai sandaran
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
-  if (url.origin !== location.origin) return; // API luaran (peta/routing) terus ke rangkaian
-
   if (e.request.method !== 'GET') return;
 
-  e.respondWith(
-    fetch(e.request)
-      .then(resp => {
-        const copy = resp.clone();
-        caches.open(CACHE).then(c => c.put(e.request, copy));
-        return resp;
-      })
-      .catch(() => caches.match(e.request))
-  );
+  // Tiles peta — cache-first supaya boleh guna offline (kawasan sudah dilihat)
+  if (url.hostname.includes('tiles.openfreemap.org') || url.hostname.includes('unpkg.com')) {
+    e.respondWith(cacheFirst(e.request, MAP_CACHE));
+    return;
+  }
+
+  // Aset aplikasi sendiri — network-first
+  if (url.origin === location.origin) {
+    e.respondWith(networkFirst(e.request, CACHE));
+    return;
+  }
+
+  // API luaran (Valhalla routing, trafik, nominatim) — network-first dengan sandaran cache
+  e.respondWith(networkFirst(e.request, MAP_CACHE));
 });
+
+function cacheFirst(request, cacheName) {
+  return caches.match(request).then(cached => {
+    if (cached) {
+      // Kemaskini cache di latar belakang (stale-while-revalidate)
+      fetch(request).then(resp => {
+        if (resp.ok) caches.open(cacheName).then(c => c.put(request, resp.clone()));
+      }).catch(() => {});
+      return cached;
+    }
+    return fetch(request).then(resp => {
+      if (resp.ok) {
+        const copy = resp.clone();
+        caches.open(cacheName).then(c => c.put(request, copy));
+      }
+      return resp;
+    });
+  });
+}
+
+function networkFirst(request, cacheName) {
+  return fetch(request)
+    .then(resp => {
+      if (resp.ok) {
+        const copy = resp.clone();
+        caches.open(cacheName).then(c => c.put(request, copy));
+      }
+      return resp;
+    })
+    .catch(() => caches.match(request));
+}
