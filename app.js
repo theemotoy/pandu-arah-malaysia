@@ -287,7 +287,10 @@ function getLocation() {
 function onPosition(pos) {
   const c = pos.coords;
   S.userPos = [c.longitude, c.latitude];
-  if (c.speed != null && c.speed >= 0) {
+  // Reset kelajuan bila GPS tak beri speed (elak tunjuk nilai lama semasa GPS hilang)
+  if (c.speed == null) {
+    S.speed = 0;
+  } else {
     S.speed = c.speed * 3.6; // m/s -> km/j
   }
   S.userMarker.setLngLat(S.userPos);
@@ -607,7 +610,10 @@ function searchPOIByText(query, amenity) {
       if (!feats.length) { res.innerHTML = '<div class="res-item">Tiada hasil</div>'; }
       feats.slice(0, 8).forEach(f => {
         const p = f.properties || {};
+        // Photon kadang pulangkan geometry null — skip untuk elak crash
+        if (!f.geometry || !f.geometry.coordinates) return;
         const [lon, lat2] = f.geometry.coordinates;
+        if (lon == null || lat2 == null) return;
         const name = p.name || query;
         const div = document.createElement('div');
         div.className = 'res-item';
@@ -698,7 +704,9 @@ function searchPOI(key) {
       if (!features.length) { res.innerHTML = '<div class="res-item">Tiada hasil berdekatan</div>'; }
       features.slice(0, 8).forEach(f => {
         const p = f.properties;
+        if (!f.geometry || !f.geometry.coordinates) return;
         const [lon, lat2] = f.geometry.coordinates;
+        if (lon == null || lat2 == null) return;
         const name = p.name || def.q;
         const dist = fmtDist(haversine(lat, lng, lat2, lon));
         const div = document.createElement('div');
@@ -1316,21 +1324,15 @@ function checkSpeedLimit() {
   if (!S.userPos) return;
   const [lng, lat] = S.userPos;
   const q = `[out:json][timeout:10];way(around:80,${lat},${lng})["maxspeed"];out tags 3;`;
-  fetch('https://overpass-api.de/api/interpreter', {
-    method:'POST', headers:{ 'User-Agent':'HalaTuju/1.0' },
-    body: 'data=' + encodeURIComponent(q),
-  })
-    .then(r => r.json())
-    .then(d => {
-      const els = (d.elements || []).filter(e => e.tags && e.tags.maxspeed);
-      if (!els.length) { $('limitbox').classList.add('hidden'); return; }
-      let ms = els[0].tags.maxspeed;
-      ms = String(ms).replace(/\D/g, '');
-      if (!ms) { $('limitbox').classList.add('hidden'); return; }
-      $('limitval').textContent = ms;
-      $('limitbox').classList.remove('hidden');
-    })
-    .catch(() => { /* senyap - had laju optional */ });
+  queryOverpass(q, (elements) => {
+    const els = (elements || []).filter(e => e.tags && e.tags.maxspeed);
+    if (!els.length) { $('limitbox').classList.add('hidden'); return; }
+    let ms = els[0].tags.maxspeed;
+    ms = String(ms).replace(/\D/g, '');
+    if (!ms) { $('limitbox').classList.add('hidden'); return; }
+    $('limitval').textContent = ms;
+    $('limitbox').classList.remove('hidden');
+  });
 }
 
 // ---- Kamera had laju (amaran) ----
@@ -1427,10 +1429,10 @@ const VOICE_PRESETS = [
 ];
 
 function speak(text) {
-  if (!text) return;
   try {
     if (!('speechSynthesis' in window)) return;
     speechSynthesis.cancel();
+    if (!text) return; // kosong = hentikan TTS
     const u = new SpeechSynthesisUtterance(text);
     u.lang = 'ms-MY';
     // watak suara: kadar + nada ubah untuk kesan anime/kucing/dll
@@ -1462,7 +1464,8 @@ function setupButtons() {
     const src = S.map.getSource('route');
     if (src) src.setData(emptyLine());
     if (S.destinationMarker){S.destinationMarker.remove();S.destinationMarker=null;}
-    S.dest=null; S.route=null; S.allRoutes=[];
+    S.dest=null; S.route=null; S.allRoutes=[]; S.stops=[]; S.addStopMode=false;
+    renderStops();
   });
   $('stopnav').addEventListener('click', stopNavigation);
   $('recenter').addEventListener('click', () => {
@@ -1528,6 +1531,13 @@ function setupButtons() {
     voicePrefs.preset = saved;
   });
   $('voice-close').addEventListener('click', () => $('voicemodal').classList.add('hidden'));
+
+  // Tutup modal bila ketik luar (konsisten untuk semua modal)
+  ['voicemodal', 'reportmodal', 'mapmodal'].forEach(id => {
+    $(id).addEventListener('click', e => {
+      if (e.target === $(id)) $(id).classList.add('hidden');
+    });
+  });
 }
 
 // Buka modal suara, senarai preset
