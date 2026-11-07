@@ -250,14 +250,25 @@ function toggleDark() {
 }
 
 // ---- Bangunan 3D (dramatik semasa navigasi) ----
-// OpenFreeMap liberty dah ada 'building-3d' tapi halus. Tambah lapisan
-// sendiri dengan warna lebih jelas & ketinggian lebih tinggi.
+// OpenFreeMap liberty dah ada 'building-3d' tapi warna pucat & banyak bangunan
+// Malaysia tiada data ketinggian (render_height=0 → flat). Tambah lapisan sendiri
+// dengan fallback ketinggian supaya bangunan sentiasa nampak timbul.
 function addBuilding3DLayer() {
-  if (!S.buildings3D) return;
   // Guna sumber 'openmaptiles' yang dah ada dalam style liberty/dark
   const srcName = 'openmaptiles';
   if (!S.map.getSource(srcName)) return;
   if (S.map.getLayer('building-3d-custom')) S.map.removeLayer('building-3d-custom');
+  // Sembunyikan layer 3D asal (pucat) — kita guna lapisan sendiri yang lebih jelas
+  if (S.map.getLayer('building-3d')) {
+    S.map.setLayoutProperty('building-3d', 'visibility', 'none');
+  }
+  if (!S.buildings3D) return;
+  // Ketinggian: guna render_height; kalau tiada/0, fallback 12m (tengok timbul)
+  const heightExpr = ['case',
+    ['>', ['coalesce', ['get', 'render_height'], 0], 0],
+      ['*', ['get', 'render_height'], 1.4],
+      12
+  ];
   S.map.addLayer({
     id: 'building-3d-custom',
     type: 'fill-extrusion',
@@ -265,10 +276,10 @@ function addBuilding3DLayer() {
     'source-layer': 'building',
     minzoom: 14,
     paint: {
-      'fill-extrusion-color': S.darkMode ? '#3a3f4a' : '#e3e1dc',
-      'fill-extrusion-height': ['*', ['get', 'render_height'], 1.4],
+      'fill-extrusion-color': S.darkMode ? '#55606d' : '#d8d4cc',
+      'fill-extrusion-height': heightExpr,
       'fill-extrusion-base': ['get', 'render_min_height'],
-      'fill-extrusion-opacity': S.darkMode ? 0.85 : 0.9,
+      'fill-extrusion-opacity': S.darkMode ? 0.9 : 1.0,
     },
   });
 }
