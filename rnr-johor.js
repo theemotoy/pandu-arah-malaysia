@@ -23,13 +23,14 @@ const RNR_PLACES = [
 ];
 
 const TOLL_PLAZAS = [
-  { name: 'Plaza Tol Skudai', lat: 1.550, lng: 103.660, hwy: 'E3' },
-  { name: 'Plaza Tol Kempas', lat: 1.570, lng: 103.720, hwy: 'E3' },
-  { name: 'Plaza Tol Senai', lat: 1.620, lng: 103.640, hwy: 'E3' },
-  { name: 'Plaza Tol Jalan Duta', lat: 3.175, lng: 101.670, hwy: 'E1' },
-  { name: 'Plaza Tol Sungai Besi', lat: 3.060, lng: 101.710, hwy: 'E2' },
-  { name: 'Plaza Tol Ayer Keroh', lat: 2.270, lng: 102.280, hwy: 'E2' },
-  { name: 'Plaza Tol Juru', lat: 5.340, lng: 100.450, hwy: 'E1' },
-  { name: 'Plaza Tol Rawang Selatan', lat: 3.300, lng: 101.540, hwy: 'E1' },
-  { name: 'Plaza Tol Tanjung Malim', lat: 3.680, lng: 101.530, hwy: 'E1' },
+  // Kadar tol (kelas 1 = kereta biasa) anggaran awam LLM. Kelas 0 = motosikal, 2-5 = lori/bas.
+  { name: 'Plaza Tol Skudai', lat: 1.550, lng: 103.660, hwy: 'E3', toll: '2.20' },
+  { name: 'Plaza Tol Kempas', lat: 1.570, lng: 103.720, hwy: 'E3', toll: '2.20' },
+  { name: 'Plaza Tol Senai', lat: 1.620, lng: 103.640, hwy: 'E3', toll: '2.20' },
+  { name: 'Plaza Tol Jalan Duta', lat: 3.175, lng: 101.670, hwy: 'E1', toll: '2.50' },
+  { name: 'Plaza Tol Sungai Besi', lat: 3.060, lng: 101.710, hwy: 'E2', toll: '2.50' },
+  { name: 'Plaza Tol Ayer Keroh', lat: 2.270, lng: 102.280, hwy: 'E2', toll: '2.50' },
+  { name: 'Plaza Tol Juru', lat: 5.340, lng: 100.450, hwy: 'E1', toll: '2.00' },
+  { name: 'Plaza Tol Rawang Selatan', lat: 3.300, lng: 101.540, hwy: 'E1', toll: '2.00' },
+  { name: 'Plaza Tol Tanjung Malim', lat: 3.680, lng: 101.530, hwy: 'E1', toll: '2.00' },
 ];

@@ -258,6 +258,10 @@ button.danger { background:var(--danger); color:#fff; border:none; border-radius
 /* Multi-stop chips */
 #stopsbar { display:flex; flex-wrap:wrap; gap:6px; margin:8px 0; }
 #stopsbar.hidden { display:none; }
+#stopsalong { display:flex; gap:6px; margin:8px 0; }
+.stopalong { flex:1; padding:9px; border-radius:10px; background:var(--bg);
+  border:1px solid var(--border); cursor:pointer; font-size:12px; font-weight:600; color:var(--ink); }
+.stopalong:active { background:var(--blue-l); border-color:var(--blue); }
 .stop-chip { display:flex; align-items:center; gap:6px; background:var(--blue-l);
   border:1px solid var(--blue); border-radius:18px; padding:6px 12px; font-size:13px; color:var(--blue-d); }
 .stop-num { display:flex; align-items:center; justify-content:center; width:18px; height:18px;

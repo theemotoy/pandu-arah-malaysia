@@ -188,10 +188,6 @@ function emptyLine() {
   return { type:'FeatureCollection', features:[{ type:'Feature',
     geometry:{ type:'LineString', coordinates:[] }, properties:{} }] };
 }
-function shapeToGeoJSON(shape) {
-  return { type:'FeatureCollection', features:[{ type:'Feature',
-    geometry:{ type:'LineString', coordinates: shape }, properties:{} }] };
-}
 
 // Tambah (atau ganti) sumber & lapisan laluan pada style semasa.
 // Dipanggil setiap kali style berubah (init + tukar mod malam) kerana
@@ -202,7 +198,7 @@ function addRouteLayers() {
   if (S.map.getLayer('route-casing')) S.map.removeLayer('route-casing');
   if (S.map.getSource('route')) S.map.removeSource('route');
 
-  const data = (S.route) ? shapeToGeoJSON(S.route.shape) : emptyLine();
+  const data = (S.route) ? shapeToGeoJSONColored(S.route.shape) : emptyLine();
   S.map.addSource('route', { type:'geojson', data: data });
   S.map.addLayer({ id:'route-casing', type:'line', source:'route',
     layout:{'line-join':'round','line-cap':'round'},
@@ -315,6 +311,7 @@ function onPosition(pos) {
     checkSpeedLimit();
     checkSpeedCameras();
     warnSpeedCameras();
+    checkPrayerAlert();
     reportTraffic();
   }
 }
@@ -342,7 +339,6 @@ function reportTraffic() {
 }
 
 // Tarik trafik sekitar & papar warna pada peta (bulatan separa lutsinar)
-let trafficSourceAdded = false;
 function fetchTraffic() {
   if (!S.userPos) return;
   const [lng, lat] = S.userPos;
@@ -733,6 +729,74 @@ function searchPOI(key) {
       res.classList.add('show');
     })
     .catch(() => toast('Carian POI gagal. Cuba lagi.'));
+}
+
+// ---- Berhenti sepanjang laluan (stesen minyak / surau / R&R) ----
+// Cari POI berdekatan laluan aktif (bukan cuma lokasi semasa), papar jarak
+// lencongan dari laluan supaya pengguna pilih yang paling sesuai.
+function searchAlongRoute(category) {
+  if (!S.route || !S.route.shape.length) { toast('Tiada laluan aktif'); return; }
+  const [clng, clat] = S.userPos || [null, null];
+  // Ambil titik tengah laluan sebagai pusat carian (lebih luas dari lokasi)
+  const shape = S.route.shape;
+  const mid = shape[Math.floor(shape.length / 2)];
+  const [mlng, mlat] = mid;
+  const def = POI_MAP[category] || { q: category, value: category };
+  const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(def.q)}&lat=${mlat}&lon=${mlng}&limit=30`;
+  toast('Mencari sepanjang laluan…', 6000);
+  fetch(url, { headers:{ 'Accept':'application/json', 'User-Agent':'HalaTuju/1.0' } })
+    .then(r => r.json())
+    .then(d => {
+      const feats = (d.features || []).filter(f => {
+        const p = f.properties || {};
+        return (p.osm_value === def.value) || (def.value === 'place_of_worship' && p.osm_value === 'place_of_worship');
+      });
+      // Kira jarak dari laluan (garis) untuk setiap POI
+      const res = $('results');
+      res.innerHTML = '';
+      if (!feats.length) { res.innerHTML = '<div class="res-item">Tiada hasil sepanjang laluan</div>'; }
+      const withDetour = feats
+        .filter(f => f.geometry && f.geometry.coordinates)
+        .map(f => {
+          const [lon, lat2] = f.geometry.coordinates;
+          const detour = distToShape([lon, lat2], shape); // meter lencongan
+          return { f, lon, lat2, name: (f.properties.name || def.q), detour };
+        })
+        .sort((a, b) => a.detour - b.detour)
+        .slice(0, 10);
+      withDetour.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'res-item';
+        div.innerHTML = `<div class="name">${escapeHtml(item.name)}</div>
+                         <div class="sub">+${fmtDist(item.detour)} lencongan · ${fmtDist(haversine(clat||mlat, clng||mlng, item.lat2, item.lon))} dari sini</div>`;
+        div.onclick = () => {
+          addStop(item.lon, item.lat2, item.name);
+          res.classList.remove('show');
+        };
+        res.appendChild(div);
+      });
+      res.classList.add('show');
+    })
+    .catch(() => toast('Carian gagal. Cuba lagi.'));
+}
+
+// Jarak terdekat dari titik ke garisan laluan (meter)
+function distToShape(pt, shape) {
+  let min = Infinity;
+  for (let i = 0; i < shape.length - 1; i++) {
+    const d = distToSegment(pt, shape[i], shape[i+1]);
+    if (d < min) min = d;
+  }
+  return min;
+}
+function distToSegment(p, a, b) {
+  const [x, y] = p, [x1, y1] = a, [x2, y2] = b;
+  const dx = x2 - x1, dy = y2 - y1;
+  const len2 = dx*dx + dy*dy;
+  let t = len2 ? ((x - x1)*dx + (y - y1)*dy) / len2 : 0;
+  t = Math.max(0, Math.min(1, t));
+  const px = x1 + t*dx, py = y1 + t*dy;
+  return haversine(y, x, py, px);
 }
 
 // ---- Carian suara (Web Speech API) ----
@@ -1159,7 +1223,6 @@ function shapeToGeoJSONColored(shape) {
 }
 
 // Tahap trafik pada titik (cari segmen trafik terdekat dalam ~500m)
-let _trafficCache = { data: [], t: 0 };
 function trafficLevelAt(pt) {
   const segs = S.trafficSegments || [];
   if (!segs.length) return null;
@@ -1421,14 +1484,6 @@ function followBearing(bearing) {
 let voicePrefs = { voice: null, rate: 1.0, pitch: 1.0 };
 try { voicePrefs = Object.assign(voicePrefs, JSON.parse(localStorage.getItem('halaTuju.voice') || '{}')); } catch(e) {}
 
-function loadVoices() {
-  return new Promise(res => {
-    const v = speechSynthesis.getVoices();
-    if (v && v.length) { res(v); return; }
-    speechSynthesis.onvoiceschanged = () => res(speechSynthesis.getVoices());
-  });
-}
-
 // Senarai "watak suara" boleh pilih: gabungan suara + kadar + nada
 const VOICE_PRESETS = [
   { id: 'auto',    name: '🗣️ Standard (BM)', rate: 1.0,  pitch: 1.0 },
@@ -1532,6 +1587,14 @@ function setupButtons() {
     toast('Cari hentian seterusnya…');
   });
 
+  // ---- Berhenti sepanjang laluan (minyak/surau/klinik) ----
+  document.querySelectorAll('.stopalong').forEach(btn => {
+    btn.addEventListener('click', () => {
+      $('routepanel').classList.add('collapsed');
+      searchAlongRoute(btn.dataset.cat);
+    });
+  });
+
   // ---- Pemilih suara ----
   $('voicebtn').addEventListener('click', () => { openVoiceModal(); $('quickmenu').classList.add('hidden'); });
   $('voice-test').addEventListener('click', () => {
@@ -1612,6 +1675,11 @@ setupStats();
 setInterval(() => {
   if (S.userPos) { fetchTraffic(); fetchIncidents(); }
 }, 30000);
+
+// Tarik waktu solat setiap 10 minit (sekali lokasi dah sedia)
+setInterval(() => {
+  if (S.userPos) fetchPrayerTimes();
+}, 600000);
 
 // ---- Statistik (panel 📊) ----
 function setupStats() {
@@ -1697,7 +1765,11 @@ function showRnR() {
     const el = document.createElement('div');
     el.className = 'rnr-marker';
     el.textContent = p.kind === 'rnr' ? '🍔' : '🚧';
-    el.title = p.name;
+    el.title = p.toll ? (p.name + ' · RM ' + p.toll) : p.name;
+    // klik tol = papar kadar
+    if (p.kind === 'toll') {
+      el.addEventListener('click', () => toast('🚧 ' + p.name + (p.toll ? ' · RM ' + p.toll + ' (kelas 1)' : ''), 4000));
+    }
     return new maplibregl.Marker({ element: el }).setLngLat([p.lng, p.lat]).addTo(S.map);
   });
   // Fokus ke R&R terdekat (jika ada)
@@ -1713,4 +1785,64 @@ function hideRnR() {
   rnrMarkers.forEach(m => m.remove());
   rnrMarkers = [];
   toast('R&R & tol disembunyikan');
+}
+
+// ===== WAKTU SOLAT (JAKIM via waktusolat.app) =====
+// Data percuma, zon auto ikut GPS. Amaran bila waktu solat hampir semasa memandu.
+let prayerTimes = null;      // { fajr, dhuhr, asr, maghrib, isha } (timestamp saat)
+let prayerZone = null;
+let lastPrayerFetch = 0;
+let lastPrayerWarn = {};
+
+const PRAYER_NAMES = { fajr:'Subuh', dhuhr:'Zuhur', asr:'Asar', maghrib:'Maghrib', isha:'Isyak' };
+
+function fetchPrayerTimes() {
+  if (!S.userPos) return;
+  if (Date.now() - lastPrayerFetch < 3600000) return; // 1 jam sekali
+  lastPrayerFetch = Date.now();
+  const [lng, lat] = S.userPos;
+  fetch(`https://api.waktusolat.app/v2/solat/gps/${lat}/${lng}`)
+    .then(r => r.json())
+    .then(d => {
+      if (!d || !d.prayers) return;
+      prayerZone = d.zone;
+      // cari entri hari ini (day === tarikh hari ini)
+      const today = new Date().getDate();
+      const p = d.prayers.find(x => x.day === today) || d.prayers[0];
+      if (!p) return;
+      prayerTimes = {
+        fajr: p.fajr, dhuhr: p.dhuhr, asr: p.asr, maghrib: p.maghrib, isha: p.isha,
+      };
+    })
+    .catch(() => { /* senyap - solat optional */ });
+}
+
+// Semak waktu solat seterusnya; amaran bila <15 minit semasa navigasi
+function checkPrayerAlert() {
+  if (!S.navigating || !prayerTimes) return;
+  const now = Math.floor(Date.now() / 1000);
+  for (const key in prayerTimes) {
+    const t = prayerTimes[key];
+    const diffMin = Math.floor((t - now) / 60);
+    if (diffMin >= 0 && diffMin <= 15) {
+      // amaran sekali sahaja per waktu
+      if (lastPrayerWarn[key]) continue;
+      lastPrayerWarn[key] = true;
+      const name = PRAYER_NAMES[key];
+      const hhmm = formatTimeBM(new Date(t * 1000));
+      speak(`Waktu ${name} masuk ${hhmm}, ${diffMin} minit lagi`);
+      // tunjuk banner kecil + butang Singgah (ke surau terdekat)
+      showPrayerBanner(name, hhmm, diffMin);
+      return;
+    }
+  }
+}
+
+function showPrayerBanner(name, hhmm, diffMin) {
+  // Guna toast + papar surau terdekat sebagai pilihan singgah
+  toast(`🕌 ${name} ${hhmm} · ${diffMin} minit lagi`, 8000);
+  // Cari surau/masjid terdekat secara senyap untuk butang singgah
+  if (S.userPos) {
+    searchPOIByText('surau masjid', 'place_of_worship');
+  }
 }
