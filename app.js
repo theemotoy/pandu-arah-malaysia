@@ -1181,6 +1181,8 @@ async function fetchRoute(from, to) {
     S.route = S.allRoutes[0];
     S.steps = S.route.steps;
     S.stepIdx = 0;
+    // Route baru (termasuk reroute) — reset progres monotonik
+    S._maxShapeIdx = null;
     drawRoute(S.route);
     // Semasa navigasi (reroute), JANGAN buka panel laluan / zoom keluar —
     // gerak kerja Waze/Maps: reroute senyap di latar, paparan kekal pada anak panah.
@@ -1279,6 +1281,7 @@ function startNavigation() {
   S._lastStep = -1;
   S._lastSpoken = false;
   S._navStart = null; // reset ETA baseline untuk trip baru
+  S._maxShapeIdx = null; // reset progres monotonik untuk trip baru
   updateNavigation();
 }
 function stopNavigation() {
@@ -1311,7 +1314,15 @@ function nearestShapeIndex(shape, pos) {
 function updateNavigation() {
   if (!S.navigating || !S.userPos || !S.route) return;
   const shape = S.route.shape;
-  const curIdx = nearestShapeIndex(shape, S.userPos);
+  let curIdx = nearestShapeIndex(shape, S.userPos);
+
+  // Kekal monotonic: posisi sepanjang laluan hanya boleh naik (ke hadapan).
+  // GPS drift ke belakang (biasa di simpang rapat / berhenti) TIDAK boleh
+  // undurkan progres — ini elak TTS "pusing2" (keliru terus vs patah balik).
+  if (S._maxShapeIdx == null || curIdx > S._maxShapeIdx) {
+    S._maxShapeIdx = curIdx;
+  }
+  curIdx = S._maxShapeIdx;
 
   // Reroute PASIF: tanpa live traffic, reroute auto kurang diperlukan.
   // Hanya kira semula bila pengguna betul-betul tersasar jauh (>300m dari laluan,
@@ -1329,6 +1340,10 @@ function updateNavigation() {
   let next = null, nextStepNum = 0;
   for (let i=0;i<S.steps.length;i++) {
     if (S.steps[i].beginIndex > curIdx) { next = S.steps[i]; nextStepNum = i; break; }
+  }
+  // Jangan undurkan stepIdx (monotonik) — elak ulang arahan lama
+  if (nextStepNum < (S.stepIdx || 0) && S.steps[S.stepIdx]) {
+    next = S.steps[S.stepIdx]; nextStepNum = S.stepIdx;
   }
   if (!next) {
     $('navinstruction').textContent = 'Anda telah tiba di destinasi';
