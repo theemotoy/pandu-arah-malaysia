@@ -1277,6 +1277,8 @@ function startNavigation() {
   followMode = true;
   S.map.easeTo({ zoom: 17, pitch: 45, padding: { top: Math.round(window.innerHeight * 0.62), bottom: Math.round(window.innerHeight * 0.10), left: 60, right: 80 } });
   S._lastStep = -1;
+  S._lastSpoken = false;
+  S._navStart = null; // reset ETA baseline untuk trip baru
   updateNavigation();
 }
 function stopNavigation() {
@@ -1380,10 +1382,20 @@ function updateNavigation() {
   followBearing(bearingTo(S.userPos, next.location));
 }
 
+// ETA stabil: guna tempoh laluan (Valhalla) sebagai asas, bukan kelajuan semasa.
+// Kelajuan GPS berubah-ubah (berhenti di lampu, dsb) sebab tu ETA lama melompat.
 function etaText(remainingM) {
-  const speed = S.speed > 5 ? S.speed : 40; // km/j
-  const remainSec = remainingM / (speed*1000/3600);
-  const arr = new Date(Date.now() + remainSec*1000);
+  // Catat masa mula navigasi + baki jarak awal (untuk kira progress stabil)
+  if (!S._navStart) {
+    S._navStart = Date.now();
+    S._navStartDist = S.route ? S.route.distance : remainingM;
+    S._navStartDur = S.route ? S.route.duration : (remainingM / (40 * 1000 / 3600));
+  }
+  const elapsed = (Date.now() - S._navStart) / 1000; // saat sejak mula
+  // Baki tempoh = tempoh asal × (baki jarak / jarak asal), tolak masa dah berlalu
+  const progressRatio = S._navStartDist > 0 ? (remainingM / S._navStartDist) : 0;
+  const remainSec = S._navStartDur * progressRatio;
+  const arr = new Date(Date.now() + remainSec * 1000);
   return 'Tiba ' + formatTimeBM(arr);
 }
 
