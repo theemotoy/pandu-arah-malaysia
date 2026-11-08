@@ -1282,6 +1282,7 @@ function startNavigation() {
   S._lastSpoken = false;
   S._navStart = null; // reset ETA baseline untuk trip baru
   S._maxShapeIdx = null; // reset progres monotonik untuk trip baru
+  S._offRouteSince = null; // reset pemasa reroute untuk trip baru
   updateNavigation();
 }
 function stopNavigation() {
@@ -1324,16 +1325,24 @@ function updateNavigation() {
   }
   curIdx = S._maxShapeIdx;
 
-  // Reroute PASIF: tanpa live traffic, reroute auto kurang diperlukan.
-  // Hanya kira semula bila pengguna betul-betul tersasar jauh (>300m dari laluan,
-  // contoh tersilap keluar simpang), dan barulah senyap. Bukan untuk lompatan GPS kecil.
+  // Reroute: dua syarat (macam Waze/Maps) — pantas tapi tak jumpy.
+  // 1) Jarak > 80m dari laluan (bukan 300m — terlalu jauh sebelum ni)
+  // 2) Kekal tersasar ~8 saat (elak trigger sebab GPS drift sesaat)
   const offRouteDist = haversine(S.userPos[1], S.userPos[0], shape[curIdx][1], shape[curIdx][0]);
-  if (offRouteDist > 300 && S.dest && Date.now() - (S._lastReroute||0) > 30000) {
-    S._lastReroute = Date.now();
-    fetchRoute(S.userPos, [S.dest.lng, S.dest.lat]).then(() => {
-      if (S.navigating) updateNavigation();
-    });
-    return;
+  if (offRouteDist > 80) {
+    if (!S._offRouteSince) S._offRouteSince = Date.now();
+    const offRouteFor = Date.now() - S._offRouteSince;
+    if (offRouteFor > 8000 && S.dest && Date.now() - (S._lastReroute||0) > 15000) {
+      S._lastReroute = Date.now();
+      S._offRouteSince = null;
+      fetchRoute(S.userPos, [S.dest.lng, S.dest.lat]).then(() => {
+        if (S.navigating) updateNavigation();
+      });
+      return;
+    }
+  } else {
+    // kembali ke laluan — reset pemasa
+    S._offRouteSince = null;
   }
 
   // maneuver seterusnya = pertama dengan beginIndex > curIdx
