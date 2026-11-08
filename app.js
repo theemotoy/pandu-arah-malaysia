@@ -693,6 +693,21 @@ const POI_MAP = {
   school:  { q: 'sekolah', value: 'school' },
   hospital:{ q: 'hospital', value: 'hospital' },
 };
+
+// Warna & ikon jenama stesen minyak (untuk paparan berjenama)
+const FUEL_BRANDS = [
+  { match: /petronas/i,    name: 'Petronas',  color: '#00a651' },
+  { match: /shell/i,       name: 'Shell',     color: '#fdd116' },
+  { match: /petron/i,      name: 'Petron',    color: '#d2232a' },
+  { match: /bhp/i,         name: 'BHPetrol',  color: '#f7901e' },
+  { match: /caltex/i,      name: 'Caltex',    color: '#e31e24' },
+  { match: /petronas|mesra/i, name: 'Petronas', color: '#00a651' },
+];
+function fuelBrand(name) {
+  const n = name || '';
+  for (const b of FUEL_BRANDS) if (b.match.test(n)) return b;
+  return null;
+}
 function searchPOI(key) {
   if (!S.userPos) { toast('Lokasi belum dikesan. Tunggu isyarat GPS…'); return; }
   const [lng, lat] = S.userPos;
@@ -718,7 +733,13 @@ function searchPOI(key) {
         const dist = fmtDist(haversine(lat, lng, lat2, lon));
         const div = document.createElement('div');
         div.className = 'res-item';
-        div.innerHTML = `<div class="name">${escapeHtml(name)}</div>
+        // Stesen minyak: papar ikon berjenama berwarna
+        let brandIcon = '';
+        if (key === 'fuel') {
+          const b = fuelBrand(name);
+          if (b) brandIcon = `<span class="brand-dot" style="background:${b.color}"></span>`;
+        }
+        div.innerHTML = `<div class="name">${brandIcon}${escapeHtml(name)}</div>
                          <div class="sub">${dist} dari lokasi anda</div>`;
         div.onclick = () => {
           setDestination(lon, lat2, name);
@@ -1183,6 +1204,10 @@ function parseTrip(trip) {
     beginIndex: m.begin_shape_index,
     location: shape[m.begin_shape_index] || shape[0],
     name: (m.street_names && m.street_names[0]) || '',
+    // Panduan susur (exit number) + arah papan tanda (toward)
+    exitNumber: m.sign && m.sign.exit_branch_elements ? m.sign.exit_branch_elements[0].text : null,
+    toward: m.sign && m.sign.exit_toward_elements ? m.sign.exit_toward_elements.map(e => e.text).join('/') : null,
+    postInstr: m.verbal_post_transition_instruction || '',
   }));
   return {
     shape, steps,
@@ -1345,10 +1370,25 @@ function updateNavigation() {
   S.stepIdx = nextStepNum;
   const distToManeuver = distanceAlong(shape, curIdx, next.beginIndex);
 
+  // Panduan susur: "Susur E9" + arah papan tanda
+  const exitInfo = next.exitNumber
+    ? ('Susur ' + next.exitNumber + (next.toward ? ' · ' + next.toward : ''))
+    : (next.toward || '');
+
   const instr = next.text + (next.name ? ' ke ' + next.name : '');
   $('navinstruction').textContent = next.text;
-  $('navdistance').textContent = fmtDist(distToManeuver) + (next.name ? ' · ' + next.name : '');
+  $('navdistance').textContent = fmtDist(distToManeuver)
+    + (next.name ? ' · ' + next.name : '')
+    + (exitInfo ? ' · ' + exitInfo : '');
   $('navmaneuver').innerHTML = maneuverSVG(next.dir);
+
+  // Papar "Kemudian:" (maneuver selepas yang ini) — macam Waze/Google Maps
+  const nextNext = S.steps[nextStepNum + 1];
+  if (nextNext) {
+    $('navremaining').textContent = 'Kemudian: ' + nextNext.text + (nextNext.name ? ' ke ' + nextNext.name : '');
+  } else {
+    $('navremaining').textContent = fmtDist(Math.max(0, S.route.distance - distanceAlong(shape, 0, curIdx)));
+  }
 
   if (S._lastStep !== S.stepIdx) {
     S._lastStep = S.stepIdx;
@@ -1356,7 +1396,6 @@ function updateNavigation() {
   }
 
   const remaining = S.route.distance - distanceAlong(shape, 0, curIdx);
-  $('navremaining').textContent = fmtDist(Math.max(0, remaining));
   $('naveta').textContent = etaText(remaining);
 
   followBearing(bearingTo(S.userPos, next.location));
