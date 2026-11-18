@@ -302,8 +302,9 @@ function onPosition(pos) {
     S.speed = c.speed * 3.6; // m/s -> km/j
   }
   S.userMarker.setLngLat(S.userPos);
-  // Arah anak panah: guna heading GPS (bila ada), kalau tak kekal arah laluan
-  if (c.heading != null && !isNaN(c.heading)) {
+  // Arah anak panah: guna heading GPS hanya bila laju (heading boleh dipercayai
+  // bila bergerak; masa berhenti/perlahan, heading tak stabil → kekal bearing laluan).
+  if (c.heading != null && !isNaN(c.heading) && S.speed > 15) {
     S.userMarker.setRotation(c.heading);
   }
   if (!S.firstFix) {
@@ -1403,7 +1404,11 @@ function updateNavigation() {
   const remaining = S.route.distance - distanceAlong(shape, 0, curIdx);
   $('naveta').textContent = etaText(remaining);
 
-  followBearing(bearingTo(S.userPos, next.location));
+  // Bearing = arah jalan SEMASA (titik shape sekarang → titik seterusnya),
+  // bukan arah ke simpang. Ini elak peta "berpusing" menghala simpang
+  // dan kekal ikut arah jalan seperti Waze/Maps.
+  const nextShapePt = shape[Math.min(curIdx + 3, shape.length - 1)];
+  followBearing(bearingTo(shape[curIdx], nextShapePt));
 }
 
 // ETA stabil: guna tempoh laluan (Valhalla) sebagai asas, bukan kelajuan semasa.
@@ -1524,6 +1529,7 @@ function followBearing(bearing) {
   const h = window.innerHeight;
   const topPad = Math.round(h * 0.62);      // ruang atas besar = anak panah lebih bawah
   const bottomPad = Math.round(h * 0.10);   // ruang bawah kecil
+  // Guna bearing yang dikira dari jalan semasa (bukan heading GPS yang tak stabil)
   S.map.easeTo({
     bearing,
     center: S.userPos,
@@ -1532,6 +1538,11 @@ function followBearing(bearing) {
     padding: { top: topPad, bottom: bottomPad, left: 60, right: 80 },
     duration: 800,
   });
+  // Set rotation anak panah ikut bearing peta (elak anak panah tunggang terbalik
+  // bila heading GPS tak ada)
+  if (S.userMarker && S.userMarker.setRotation) {
+    S.userMarker.setRotation(bearing);
+  }
 }
 
 // ---- TTS (sebutan Melayu + pelbagai suara) ----
@@ -1590,7 +1601,8 @@ function setupButtons() {
   $('stopnav').addEventListener('click', stopNavigation);
   $('recenter').addEventListener('click', () => {
     followMode = true;
-    if (S.userPos) S.map.easeTo({ center:S.userPos, zoom:17, pitch:45 });
+    if (S.userPos) S.map.easeTo({ center:S.userPos, zoom:17, pitch:45,
+      padding: { top: Math.round(window.innerHeight * 0.62), bottom: Math.round(window.innerHeight * 0.10), left: 60, right: 80 } });
   });
 
   // Butang POI
