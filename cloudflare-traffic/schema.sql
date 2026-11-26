@@ -24,3 +24,14 @@ CREATE TABLE IF NOT EXISTS incidents (
 
 CREATE INDEX IF NOT EXISTS idx_inc_ts ON incidents(ts);
 CREATE INDEX IF NOT EXISTS idx_inc_ll ON incidents(lat, lng);
+
+-- Telemetry (log peristiwa app) — TTL 7 hari, anonim
+CREATE TABLE IF NOT EXISTS telemetry (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  type TEXT NOT NULL,
+  detail TEXT,
+  lat REAL,
+  lng REAL,
+  ts INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_tel_ts ON telemetry(ts);

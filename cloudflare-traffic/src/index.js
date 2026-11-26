@@ -39,9 +39,56 @@ export default {
       return handleIncidents(request, env);
     }
 
-    return json({ ok: true, name: 'HalaTuju Traffic', endpoints: ['/report', '/traffic', '/incident', '/incidents'] });
+    // Endpoint 5: telemetry (log ralat & peristiwa, anonim)
+    if (url.pathname === '/telemetry' && request.method === 'POST') {
+      return handleTelemetry(request, env);
+    }
+
+    // Endpoint 6: baca telemetry (admin)
+    if (url.pathname === '/telemetry/view' && request.method === 'GET') {
+      return handleTelemetryView(request, env);
+    }
+
+    return json({ ok: true, name: 'HalaTuju Traffic', endpoints: ['/report', '/traffic', '/incident', '/incidents', '/telemetry'] });
   },
 };
+
+// Telemetry: simpan peristiwa app (ralat, reroute, GPS) — anonim, TTL 7 hari
+async function handleTelemetry(request, env) {
+  try {
+    const { type, detail, lat, lng } = await request.json();
+    if (!type) return json({ error: 'Perlu type' }, 400);
+    const now = Math.floor(Date.now() / 1000);
+    await env.DB.prepare(
+      'INSERT INTO telemetry (type, detail, lat, lng, ts) VALUES (?, ?, ?, ?, ?)'
+    ).bind(String(type).slice(0, 50), String(detail || '').slice(0, 500),
+      lat || null, lng || null, now).run();
+    // Bersihkan lebih 7 hari
+    await env.DB.prepare('DELETE FROM telemetry WHERE ts < ?').bind(now - 604800).run();
+    return json({ ok: true });
+  } catch (e) {
+    return json({ error: 'Ralat telemetry: ' + (e.message || e) }, 500);
+  }
+}
+
+async function handleTelemetryView(request, env) {
+  try {
+    const url = new URL(request.url);
+    const hours = parseInt(url.searchParams.get('hours') || '24');
+    const cutoff = Math.floor(Date.now() / 1000) - hours * 3600;
+    const { results } = await env.DB.prepare(
+      `SELECT type, COUNT(*) AS c, MAX(ts) AS last
+       FROM telemetry WHERE ts >= ?
+       GROUP BY type ORDER BY c DESC`
+    ).bind(cutoff).run();
+    const { results: recent } = await env.DB.prepare(
+      'SELECT type, detail, ts FROM telemetry WHERE ts >= ? ORDER BY ts DESC LIMIT 50'
+    ).bind(cutoff).run();
+    return json({ ok: true, summary: results || [], recent: recent || [] });
+  } catch (e) {
+    return json({ error: 'Ralat view: ' + (e.message || e) }, 500);
+  }
+}
 
 async function handleReport(request, env) {
   try {

@@ -2,6 +2,20 @@
 /* Enjin routing: Valhalla (elak tol/lebuh raya, terpendek, alternatif, mod jalan) */
 'use strict';
 
+// ---- Telemetry (anonim): rekod ralat & peristiwa untuk pemantauan ----
+// Hantar ke worker (tanpa identiti). Gagal = senyap (telemetry tak boleh ganggu app).
+function telLog(type, detail) {
+  try {
+    const body = { type, detail: String(detail || '').slice(0, 400) };
+    if (S && S.userPos) { body.lat = S.userPos[1]; body.lng = S.userPos[0]; }
+    fetch(TRAFFIC_ENDPOINT + '/telemetry', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      keepalive: true,
+    }).catch(() => {});
+  } catch (e) {}
+}
+
 // ---- Keadaan global ----
 const S = {
   map: null,
@@ -288,7 +302,10 @@ function getLocation() {
   if (S.watchId != null) navigator.geolocation.clearWatch(S.watchId);
   S.watchId = navigator.geolocation.watchPosition(
     pos => onPosition(pos),
-    err => { toast('Gagal mengesan lokasi: ' + err.message); },
+    err => {
+      telLog('gps_error', err.code + ': ' + err.message);
+      toast('Gagal mengesan lokasi: ' + err.message);
+    },
     { enableHighAccuracy: true, maximumAge: 1000, timeout: 20000 }
   );
 }
@@ -1194,6 +1211,7 @@ async function fetchRoute(from, to) {
       showAlternates();
     }
   } catch(e) {
+    telLog('route_fail', (e && e.message) || 'fetchRoute gagal');
     toast('Gagal mendapatkan laluan. Semak sambungan internet.');
   }
 }
@@ -1324,18 +1342,23 @@ function updateNavigation() {
   if (S._maxShapeIdx == null || curIdx > S._maxShapeIdx) {
     S._maxShapeIdx = curIdx;
   }
-  curIdx = S._maxShapeIdx;
+  // Clamp: progres tak boleh melebihi hujung laluan (elak undefined selepas reroute)
+  curIdx = Math.min(S._maxShapeIdx, shape.length - 1);
 
   // Reroute: dua syarat (macam Waze/Maps) — pantas tapi tak jumpy.
   // 1) Jarak > 80m dari laluan (bukan 300m — terlalu jauh sebelum ni)
   // 2) Kekal tersasar ~8 saat (elak trigger sebab GPS drift sesaat)
   const offRouteDist = haversine(S.userPos[1], S.userPos[0], shape[curIdx][1], shape[curIdx][0]);
   if (offRouteDist > 80) {
-    if (!S._offRouteSince) S._offRouteSince = Date.now();
+    if (!S._offRouteSince) {
+      S._offRouteSince = Date.now();
+      telLog('off_route', 'tersasar ' + Math.round(offRouteDist) + 'm');
+    }
     const offRouteFor = Date.now() - S._offRouteSince;
     if (offRouteFor > 8000 && S.dest && Date.now() - (S._lastReroute||0) > 15000) {
       S._lastReroute = Date.now();
       S._offRouteSince = null;
+      telLog('reroute', 'tersasar ' + Math.round(offRouteDist) + 'm selama ' + Math.round(offRouteFor/1000) + 's');
       fetchRoute(S.userPos, [S.dest.lng, S.dest.lat]).then(() => {
         if (S.navigating) updateNavigation();
       });
@@ -1725,6 +1748,10 @@ if ('serviceWorker' in navigator) {
 S.darkMode = localStorage.getItem('halaTuju.dark') === '1';
 S.darkStyle = localStorage.getItem('halaTuju.darkStyle') || 'dark';
 S.buildings3D = localStorage.getItem('halaTuju.buildings3D') !== '0';
+
+// Telemetry: rakam semua ralat JS tak ditangkap (untuk pemantauan)
+window.addEventListener('error', e => telLog('js_error', e.message + ' @' + (e.filename||'').split('/').pop() + ':' + e.lineno));
+window.addEventListener('unhandledrejection', e => telLog('promise_reject', String(e.reason).slice(0, 300)));
 
 initMap();
 setupSearch();
