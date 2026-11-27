@@ -209,17 +209,29 @@ function emptyLine() {
 // setStyle() buang SEMUA source/layer yang sedia ada.
 function addRouteLayers() {
   // buang layer lama jika ada (untuk elak konflik id)
-  if (S.map.getLayer('route-line')) S.map.removeLayer('route-line');
-  if (S.map.getLayer('route-casing')) S.map.removeLayer('route-casing');
+  ['route-line','route-casing','route-travelled','route-travelled-casing'].forEach(id => {
+    if (S.map.getLayer(id)) S.map.removeLayer(id);
+  });
   if (S.map.getSource('route')) S.map.removeSource('route');
+  if (S.map.getSource('route-travelled')) S.map.removeSource('route-travelled');
 
-  const data = (S.route) ? { type:'FeatureCollection', features:[{ type:'Feature',
+  const lineData = (S.route) ? { type:'FeatureCollection', features:[{ type:'Feature',
     geometry:{ type:'LineString', coordinates: S.route.shape }, properties:{} }] } : emptyLine();
-  S.map.addSource('route', { type:'geojson', data: data });
+  S.map.addSource('route', { type:'geojson', data: lineData });
+  S.map.addSource('route-travelled', { type:'geojson', data: emptyLine() });
+
+  // Laluan dah dilalui (kelabu) — di bawah
+  S.map.addLayer({ id:'route-travelled-casing', type:'line', source:'route-travelled',
+    layout:{'line-join':'round','line-cap':'round'},
+    paint:{'line-color':'#ffffff','line-width':11} });
+  S.map.addLayer({ id:'route-travelled', type:'line', source:'route-travelled',
+    layout:{'line-join':'round','line-cap':'round'},
+    paint:{'line-color':'#b8b3c4','line-width':7} });
+
+  // Baki laluan (ungu) — atas
   S.map.addLayer({ id:'route-casing', type:'line', source:'route',
     layout:{'line-join':'round','line-cap':'round'},
     paint:{'line-color':'#ffffff','line-width':11} });
-  // Garis laluan ungu pejal (berterusan, tiada terputus)
   S.map.addLayer({ id:'route-line', type:'line', source:'route',
     layout:{'line-join':'round','line-cap':'round'},
     paint:{'line-color':'#713cc7','line-width':7} });
@@ -1239,15 +1251,33 @@ function parseTrip(trip) {
 
 function drawRoute(route) {
   const src = S.map.getSource('route');
-  // Garis laluan kekal ungu pejal (berterusan) — trafik dipaparkan sebagai
-  // titik berwarna berasingan, bukan mewarnakan garisan (elak rupa terputus).
-  if (src) src.setData({ type:'FeatureCollection', features:[{ type:'Feature',
-    geometry:{ type:'LineString', coordinates: route.shape }, properties:{} }] });
+  const travelledSrc = S.map.getSource('route-travelled');
+  const shape = route.shape;
+  // Baki laluan (ungu) + laluan dah dilalui (kelabu)
+  if (src) src.setData(lineGeoJSON(shape, 0));
+  if (travelledSrc) travelledSrc.setData(emptyLine());
   // Semasa navigasi, jangan fitBounds (akan zoom keluar dari anak panah)
   if (S.navigating) return;
-  const bounds = route.shape.reduce((b,c)=>b.extend(c),
-    new maplibregl.LngLatBounds(route.shape[0], route.shape[0]));
+  const bounds = shape.reduce((b,c)=>b.extend(c),
+    new maplibregl.LngLatBounds(shape[0], shape[0]));
   S.map.fitBounds(bounds, { padding: 80 });
+}
+
+function lineGeoJSON(shape, fromIdx) {
+  const coords = shape.slice(fromIdx);
+  return { type:'FeatureCollection', features: coords.length >= 2 ? [{ type:'Feature',
+    geometry:{ type:'LineString', coordinates: coords }, properties:{} }] : [] };
+}
+
+// Kemaskini warna laluan masa navigasi: bahagian dah dilalui → kelabu
+function updateTravelledRoute(curIdx) {
+  const shape = S.route ? S.route.shape : [];
+  if (shape.length < 2) return;
+  const idx = Math.max(0, Math.min(curIdx, shape.length - 1));
+  const remainSrc = S.map.getSource('route');
+  const travelledSrc = S.map.getSource('route-travelled');
+  if (remainSrc) remainSrc.setData(lineGeoJSON(shape, idx));
+  if (travelledSrc) travelledSrc.setData(lineGeoJSON(shape.slice(0, idx + 1), 0));
 }
 
 function showRouteSummary() {
@@ -1296,7 +1326,7 @@ function startNavigation() {
   $('speedbox').classList.remove('hidden');
   $('limitbox').classList.remove('hidden');
   followMode = true;
-  S.map.easeTo({ zoom: 17, pitch: 45, padding: { top: Math.round(window.innerHeight * 0.62), bottom: Math.round(window.innerHeight * 0.10), left: 60, right: 80 } });
+  S.map.jumpTo({ zoom: 17, pitch: 45, padding: { top: Math.round(window.innerHeight * 0.62), bottom: Math.round(window.innerHeight * 0.10), left: 60, right: 80 } });
   S._lastStep = -1;
   S._lastSpoken = false;
   S._navStart = null; // reset ETA baseline untuk trip baru
@@ -1357,6 +1387,9 @@ function updateNavigation() {
   }
   // Clamp: progres tak boleh melebihi hujung laluan (elak undefined selepas reroute)
   curIdx = Math.min(S._maxShapeIdx, shape.length - 1);
+
+  // Warnakan laluan yang dah dilalui (kelabu), baki kekal ungu
+  updateTravelledRoute(curIdx);
 
   // Reroute: map matching ringan + dua syarat.
   // Telemetry semalam: GPS telefon lazim ~80-99m dari garisan even bila pandu betul
@@ -1568,17 +1601,12 @@ function followBearing(bearing) {
   const h = window.innerHeight;
   const topPad = Math.round(h * 0.62);      // ruang atas besar = anak panah lebih bawah
   const bottomPad = Math.round(h * 0.10);   // ruang bawah kecil
-  // Guna bearing yang dikira dari jalan semasa (bukan heading GPS yang tak stabil)
-  S.map.easeTo({
-    bearing,
-    center: S.userPos,
-    zoom: 17,
-    pitch: 45,
-    padding: { top: topPad, bottom: bottomPad, left: 60, right: 80 },
-    duration: 800,
-  });
-  // Set rotation anak panah ikut bearing peta (elak anak panah tunggang terbalik
-  // bila heading GPS tak ada)
+  const cam = { center: S.userPos, zoom: 17, pitch: 45, bearing,
+    padding: { top: topPad, bottom: bottomPad, left: 60, right: 80 } };
+  // Waze-style: posisi & sudut kamera JUMP serta-merta (tak bergegar bila
+  // GPS update 1Hz). Animasi 800ms bertindih setiap panggilan = anak panah terapung.
+  S.map.jumpTo(cam);
+  // Rotation anak panah: guna bearing peta (stabil), bukan heading GPS yang bergegar
   if (S.userMarker && S.userMarker.setRotation) {
     S.userMarker.setRotation(bearing);
   }
