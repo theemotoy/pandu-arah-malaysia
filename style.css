@@ -203,8 +203,10 @@ button.danger { background:var(--danger); color:#fff; border:none; border-radius
 
 /* Kluster ETA (tengah, fleksibel) */
 .eta-cluster { flex:1; min-width:0; }
-#naveta { font-size:20px; font-weight:800; line-height:1.1; }
-#navremaining { font-size:12px; opacity:.85; margin-top:2px; }
+#naveta { font-size:19px; font-weight:800; line-height:1.15; }
+#navleft { font-size:14px; font-weight:700; opacity:.95; margin-top:2px; color:#ffd54f; }
+#navremaining { font-size:11px; opacity:.7; margin-top:3px;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
 /* Butang dalam bar bawah */
 #navbottom .ghost { flex:0 0 auto; background:rgba(255,255,255,.16); color:#fff;

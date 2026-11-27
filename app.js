@@ -1322,6 +1322,19 @@ function stopNavigation() {
   toast('Pandu arah ditamatkan');
 }
 
+// Map matching ringan: jarak minimum dari GPS ke mana-mana titik laluan
+// dalam window ±radius sekitar progres semasa. Lebih toleran dari 1 titik.
+function minDistToShapeWindow(pos, shape, curIdx, window) {
+  const lo = Math.max(0, curIdx - window);
+  const hi = Math.min(shape.length - 1, curIdx + window);
+  let min = Infinity;
+  for (let i = lo; i <= hi; i++) {
+    const d = haversine(pos[1], pos[0], shape[i][1], shape[i][0]);
+    if (d < min) min = d;
+  }
+  return min;
+}
+
 function nearestShapeIndex(shape, pos) {
   let min=Infinity, idx=0;
   for(let i=0;i<shape.length;i++){
@@ -1345,17 +1358,18 @@ function updateNavigation() {
   // Clamp: progres tak boleh melebihi hujung laluan (elak undefined selepas reroute)
   curIdx = Math.min(S._maxShapeIdx, shape.length - 1);
 
-  // Reroute: dua syarat (macam Waze/Maps) — pantas tapi tak jumpy.
-  // 1) Jarak > 80m dari laluan (bukan 300m — terlalu jauh sebelum ni)
-  // 2) Kekal tersasar ~8 saat (elak trigger sebab GPS drift sesaat)
-  const offRouteDist = haversine(S.userPos[1], S.userPos[0], shape[curIdx][1], shape[curIdx][0]);
-  if (offRouteDist > 80) {
+  // Reroute: map matching ringan + dua syarat.
+  // Telemetry semalam: GPS telefon lazim ~80-99m dari garisan even bila pandu betul
+  // (akurasi GPS bandar). Jadi guna MIN jarak ke window titik laluan, bukan 1 titik.
+  const offRouteDist = minDistToShapeWindow(S.userPos, shape, curIdx, 12);
+  if (offRouteDist > 120) {
     if (!S._offRouteSince) {
       S._offRouteSince = Date.now();
       telLog('off_route', 'tersasar ' + Math.round(offRouteDist) + 'm');
     }
     const offRouteFor = Date.now() - S._offRouteSince;
-    if (offRouteFor > 8000 && S.dest && Date.now() - (S._lastReroute||0) > 15000) {
+    // cooldown 30s (dulu 15s) — elak 4x reroute dalam 1 minit macam telemetry semalam
+    if (offRouteFor > 8000 && S.dest && Date.now() - (S._lastReroute||0) > 30000) {
       S._lastReroute = Date.now();
       S._offRouteSince = null;
       telLog('reroute', 'tersasar ' + Math.round(offRouteDist) + 'm selama ' + Math.round(offRouteFor/1000) + 's');
@@ -1380,10 +1394,11 @@ function updateNavigation() {
   }
   if (!next) {
     $('navinstruction').textContent = 'Anda telah tiba di destinasi';
-    $('navdistance').textContent = fmtDist(segDist(shape[curIdx], shape[shape.length-1]));
+    $('navdistance').textContent = '—';
     $('navmaneuver').innerHTML = maneuverSVG('arrive');
-    $('navremaining').textContent = '0 m';
+    $('navremaining').textContent = '';
     $('naveta').textContent = 'Tiba';
+    $('navleft').textContent = '0 m';
     return;
   }
 
@@ -1426,6 +1441,7 @@ function updateNavigation() {
 
   const remaining = S.route.distance - distanceAlong(shape, 0, curIdx);
   $('naveta').textContent = etaText(remaining);
+  $('navleft').textContent = 'Baki ' + fmtDist(Math.max(0, remaining));
 
   // Bearing = arah jalan SEMASA (titik shape sekarang → titik seterusnya),
   // bukan arah ke simpang. Ini elak peta "berpusing" menghala simpang
