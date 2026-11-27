@@ -127,9 +127,15 @@ function bearingTo(a, b) {
   return (Math.atan2(y,x)*180/Math.PI + 360) % 360;
 }
 
-// ---- Penanda arah (anak panah kenderaan gaya Waze) ----
+// ---- Penanda arah (anak panah kenderaan gaya Google Maps/Waze) ----
+// Kon arah lutsinar + anak panah dengan bayang dalam (drop-shadow) — nampak "hidup".
 function arrowSVG() {
-  return `<svg viewBox="0 0 24 24"><path d="M12 1.5 L21.5 21.5 L12 17 L2.5 21.5 Z" fill="#2f9ee0" stroke="#ffffff" stroke-width="1.4"/></svg>`;
+  return `<svg viewBox="0 0 64 64" width="100%" height="100%">
+    <!-- kon arah lutsinar memancut ke hadapan -->
+    <path d="M32 4 L52 52 L32 42 L12 52 Z" fill="#2f9ee0" fill-opacity="0.18"/>
+    <!-- anak panah utama -->
+    <path d="M32 8 L48 50 L32 41 L16 50 Z" fill="#1a73e8" stroke="#ffffff" stroke-width="2.4" stroke-linejoin="round"/>
+  </svg>`;
 }
 function maneuverSVG(dir) {
   const deg = (dir==='left'||dir==='slight-left'||dir==='sharp-left') ? -90
@@ -160,10 +166,10 @@ function initMap() {
   const el = document.createElement('div');
   el.className = 'user-arrow';
   el.innerHTML = arrowSVG();
-  el.style.width = '40px'; el.style.height = '40px';
-  el.style.filter = 'drop-shadow(0 2px 4px rgba(0,0,0,.35))';
-  // rotationAlignment:'map' — anak panah berputar bersama peta; arah dikawal setRotation()
-  S.userMarker = new maplibregl.Marker({ element: el, rotationAlignment:'map' })
+  el.style.width = '48px'; el.style.height = '48px';
+  el.style.filter = 'drop-shadow(0 1px 5px rgba(0,0,0,.45))';
+  // anchor 'center' + rotationAlignment 'map' — putar ikut arah, pusat tepat pada koordinat
+  S.userMarker = new maplibregl.Marker({ element: el, rotationAlignment:'map', anchor:'center' })
     .setLngLat([0,0]).addTo(S.map);
 
   S.map.on('load', () => {
@@ -188,7 +194,7 @@ function initMap() {
       if (Date.now() - lastMapInteraction >= 4500 && S.navigating) {
         followMode = true;
         // kekalkan bearing semasa, center ke lokasi
-        S.map.easeTo({ center: S.userPos, bearing: S.map.getBearing(), zoom: 17, pitch: 45, padding: { top: Math.round(window.innerHeight * 0.62), bottom: Math.round(window.innerHeight * 0.10), left: 60, right: 80 }, duration: 600 });
+        S.map.easeTo({ center: S.userPos, bearing: S.map.getBearing(), zoom: 17, pitch: 45, padding: { top: Math.round(window.innerHeight * 0.52), bottom: Math.round(window.innerHeight * 0.08), left: 60, right: 80 }, duration: 600 });
       }
     }, 5000);
   };
@@ -1326,7 +1332,7 @@ function startNavigation() {
   $('speedbox').classList.remove('hidden');
   $('limitbox').classList.remove('hidden');
   followMode = true;
-  S.map.jumpTo({ zoom: 17, pitch: 45, padding: { top: Math.round(window.innerHeight * 0.62), bottom: Math.round(window.innerHeight * 0.10), left: 60, right: 80 } });
+  S.map.jumpTo({ zoom: 17, pitch: 45, padding: { top: Math.round(window.innerHeight * 0.52), bottom: Math.round(window.innerHeight * 0.08), left: 60, right: 80 } });
   S._lastStep = -1;
   S._lastSpoken = false;
   S._navStart = null; // reset ETA baseline untuk trip baru
@@ -1594,13 +1600,13 @@ function warnSpeedCameras() {
 
 let followMode = true;
 let lastMapInteraction = 0;
-// Waze-style: anak panah duduk ~78% ke bawah skrin.
+// Waze/Maps-style: anak panah duduk ~68-70% ke bawah skrin.
 // Dalam MapLibre, padding.atas BESAR = center peta (anak panah) ditolak ke BAWAH.
 function followBearing(bearing) {
   if (!followMode) return;
   const h = window.innerHeight;
-  const topPad = Math.round(h * 0.62);      // ruang atas besar = anak panah lebih bawah
-  const bottomPad = Math.round(h * 0.10);   // ruang bawah kecil
+  const topPad = Math.round(h * 0.52);      // seimbang: nampak jalan depan, arrow tak terlalu bawah
+  const bottomPad = Math.round(h * 0.08);   // ruang bawah untuk bar navigasi
   const cam = { center: S.userPos, zoom: 17, pitch: 45, bearing,
     padding: { top: topPad, bottom: bottomPad, left: 60, right: 80 } };
   // Waze-style: posisi & sudut kamera JUMP serta-merta (tak bergegar bila
@@ -1669,7 +1675,7 @@ function setupButtons() {
   $('recenter').addEventListener('click', () => {
     followMode = true;
     if (S.userPos) S.map.easeTo({ center:S.userPos, zoom:17, pitch:45,
-      padding: { top: Math.round(window.innerHeight * 0.62), bottom: Math.round(window.innerHeight * 0.10), left: 60, right: 80 } });
+      padding: { top: Math.round(window.innerHeight * 0.52), bottom: Math.round(window.innerHeight * 0.08), left: 60, right: 80 } });
   });
 
   // Butang POI
